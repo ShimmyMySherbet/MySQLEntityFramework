@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using Google.Protobuf.Reflection;
 using MySql.Data.MySqlClient;
 using ShimmyMySherbet.MySQL.EF.Models;
 using ShimmyMySherbet.MySQL.EF.Models.Exceptions;
@@ -232,8 +231,6 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             {
                 BodyParmas.Add($"    `{Field.Name}` {Field.Type.SQLRepresentation} {(Field.Null ? "NULL" : "NOT NULL")}{(Field.Default != null ? $" DEFAULT @DEF{Defaults.Count}" : "")}{(Field.AutoIncrement ? " AUTO_INCREMENT" : "")}");
 
-                //CommandBuilder.Append($"{(FL ? "" : ",\n")}    `{Field.Name}` {Field.Type.SQLRepresentation} {(Field.Null ? "NULL" : "NOT NULL")}{(Field.Default != null ? $" DEFAULT @DEF{Defaults.Count}" : "")}{(Field.AutoIncrement ? " AUTO_INCREMENT" : "")}" +
-                //    $"{(Fields.LastIndexOf(Field) == Fields.Count - 1 ? "," : "")}");
                 if (FL) FL = false;
                 if (Field.Default != null) Defaults.Add(Field.Default);
                 if (Field.PrimaryKey)
@@ -244,7 +241,6 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     BodyParmas.Add($"    INDEX `{Field.Name}_INDEX` (`{Field.Name}`)");
             }
             CommandBuilder.AppendLine(string.Join(",\n", BodyParmas));
-            //if (CommandBuilder.ToString().EndsWith(",")) CommandBuilder.Remove(CommandBuilder.Length - 1, 1);
             CommandBuilder.Append($") ENGINE = {DBEngine};");
             MySqlCommand sqlCommand = (Connection != null ? new MySqlCommand(CommandBuilder.ToString(), Connection) : new MySqlCommand(CommandBuilder.ToString()));
             foreach (object Def in Defaults)

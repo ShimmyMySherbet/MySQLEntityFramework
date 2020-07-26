@@ -10,6 +10,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
     {
         public string ConnectionString;
         private MySqlConnection ActiveConnection;
+
         /// <summary>
         /// Declares if a single connection should be used. If this is enabled, all actions will utilise a single connection. If the connection is in use, the methods will block untill it is available.
         /// Enable this if you are just using this client on a single thread.
@@ -20,6 +21,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         private EntityCommandBuilder CommandBuilder = new EntityCommandBuilder();
         private MySQLEntityReader Reader = new MySQLEntityReader();
         private SQLTypeHelper IndexedTypeHelper = new SQLTypeHelper();
+
         /// <summary>
         /// </summary>
         /// <param name="ConnectionString">The SQL Connection String to use.</param>
@@ -32,6 +34,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             this.ReuseSingleConnection = ReuseSingleConnection;
             Reader.IndexedHelper = IndexedTypeHelper;
         }
+
         /// <summary>
         /// </summary>
         /// <param name="Address">The Database Address</param>
@@ -46,7 +49,9 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         {
             ConnectionString = $"Server={Address};Uid={Username}{(Password != null ? $";Pwd={Password}" : "")}{(Database != null ? $";Database={Database}" : "")};Port={Port};";
             this.ReuseSingleConnection = ReuseSingleConnection;
+            Reader.IndexedHelper = IndexedTypeHelper;
         }
+
         public string Database
         {
             get
@@ -89,6 +94,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                 ActiveConnection.Close();
             }
         }
+
         /// <summary>
         /// Creates the object in the database table.
         /// </summary>
@@ -118,6 +124,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                 }
             }
         }
+
         /// <summary>
         /// Returns the connection state. If ReuseSingleConnection is disabled, this will try to create a new connection and test it.
         /// </summary>
@@ -174,6 +181,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                 }
             }
         }
+
         /// <summary>
         /// Creates a database table using the provided class model.
         /// </summary>
@@ -185,7 +193,6 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                 {
                     using (MySqlCommand Command = CommandBuilder.BuildCreateTableCommand<T>(TableName, ActiveConnection))
                     {
-                        Console.WriteLine(Command.CommandText);
                         Command.ExecuteNonQuery();
                     }
                 }
@@ -265,6 +272,30 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
         }
 
+        public void DeleteTable(string Table)
+        {
+            if (ReuseSingleConnection)
+            {
+                lock (ActiveConnection)
+                {
+                    using (MySqlCommand Command = CommandBuilder.BuildCommand(ActiveConnection, "DROP TABLE @0", Table))
+                    {
+                        Command.ExecuteNonQuery();
+                    }
+                }
+            }
+            else
+            {
+                using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+                {
+                    using (MySqlCommand Command = CommandBuilder.BuildCommand(Connection, "DROP TABLE @0", Table))
+                    {
+                        Command.ExecuteNonQuery();
+                    }
+                }
+            }
+        }
+
         private bool TryConnect(MySqlConnection connection)
         {
             if (connection.State == System.Data.ConnectionState.Open) return true;
@@ -304,6 +335,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                 }
             }
         }
+
         /// <summary>
         /// Excecutes the given query and returns a single result.
         /// </summary>
@@ -320,7 +352,8 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                     if (Results.Count != 0)
                     {
                         return Results[0];
-                    } else
+                    }
+                    else
                     {
                         return default;
                     }

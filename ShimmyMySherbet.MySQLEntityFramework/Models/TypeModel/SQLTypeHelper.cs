@@ -65,7 +65,9 @@ namespace ShimmyMySherbet.MySQL.EF.Models.TypeModel
         private static Type[] UInt32Equivilants = { typeof(byte), typeof(UInt16) };
         private static Type[] Int64Equivilants = { typeof(byte), typeof(sbyte), typeof(Int16), typeof(UInt16), typeof(UInt32), typeof(UInt32) };
         private static Type[] UInt64Equivilants = { typeof(byte), typeof(UInt16), typeof(UInt32) };
-
+        /// <summary>
+        /// Checks for Loss-less casts
+        /// </summary>
         public static bool CanCastEquivilant(Type BaseType, Type TargetType)
         {
             if (TargetType == typeof(Int16))
@@ -91,5 +93,16 @@ namespace ShimmyMySherbet.MySQL.EF.Models.TypeModel
                 return false;
             }
         }
+
+
+        public static bool NumericType(Type T)
+        {
+            if (T.IsPrimitive)
+            {
+                return ((T != typeof(char)) && (T != typeof(string)) && (T != typeof(object)));
+            } else return false;
+        }
+
+
     }
 }

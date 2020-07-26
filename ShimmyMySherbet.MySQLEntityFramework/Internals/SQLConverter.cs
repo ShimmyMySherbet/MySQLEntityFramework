@@ -37,6 +37,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             List<T> Entries = new List<T>();
             int CompatableColumn = -1;
             bool CastRequired = false;
+            bool IsNumeric = SQLTypeHelper.NumericType(typeof(T));
             for (int i = 0; i < Reader.FieldCount; i++)
             {
                 Type SQLType = Reader.GetFieldType(i);
@@ -44,7 +45,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                 {
                     CompatableColumn = i;
                 }
-                else if (SQLTypeHelper.CanCastEquivilant(SQLType, typeof(T)))
+                else if (SQLTypeHelper.CanCastEquivilant(SQLType, typeof(T)) || (IsNumeric && SQLTypeHelper.NumericType(SQLType)))
                 {
                     CompatableColumn = i;
                     CastRequired = true;
