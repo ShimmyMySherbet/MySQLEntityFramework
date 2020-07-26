@@ -1,0 +1,14 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ShimmyMySherbet.MySQL.EF.Models.Internals
+{
+    public class SQLFieldStoreMatch
+    {
+        public LocalFieldReferance LocalFieldReferance;
+        public SQLFieldReferance SQLFieldReferance;
+    }
+}
