@@ -153,4 +153,11 @@ EntityClient.DeleteTable("Users");
 
 For a full list of SQL Attribues, see the wiki page https://github.com/ShimmyMySherbet/MySQLEntityFramework/wiki/SQL-Attributes
 
+# Installation
+
+Install from Nuget:
+```
+Install-Package ShimmyMySherbet.MySQL.EF -Version 1.0.0
+```
+
 
