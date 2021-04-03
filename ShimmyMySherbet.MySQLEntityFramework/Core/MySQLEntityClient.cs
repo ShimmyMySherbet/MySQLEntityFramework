@@ -156,12 +156,64 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         {
             using (MySqlConnection connection = new MySqlConnection(ConnectionString))
             {
-                connection.Open();
+                await connection.OpenAsync();
                 using (MySqlCommand Command = CommandBuilder.BuildInsertCommand<T>(Obj, Table, connection))
                 {
                     await Command.ExecuteNonQueryAsync();
                 }
-                connection.Close();
+                await connection.CloseAsync();
+            }
+        }
+
+        /// <summary>
+        /// Creates the object in the database table.
+        /// If an item with the same primary or unique key exists, it will update it instead.
+        /// </summary>
+        /// <param name="Obj">The object to create</param>
+        /// <param name="Table">The table to create the object in</param>
+        public void InsertUpdate<T>(T Obj, string Table)
+        {
+            if (ReuseSingleConnection)
+            {
+                lock (ActiveConnection)
+                {
+                    using (MySqlCommand Command = CommandBuilder.BuildInsertUpdateCommand<T>(Obj, Table, ActiveConnection))
+                    {
+                        Console.WriteLine(Command.CommandText);
+
+                        Command.ExecuteNonQuery();
+                    }
+                }
+            }
+            else
+            {
+                using (MySqlConnection connection = new MySqlConnection(ConnectionString))
+                {
+                    connection.Open();
+                    using (MySqlCommand Command = CommandBuilder.BuildInsertUpdateCommand<T>(Obj, Table, connection))
+                    {
+                        Command.ExecuteNonQuery();
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Creates the object in the database table.
+        /// If an item with the same primary or unique key exists, it will update it instead.
+        /// </summary>
+        /// <param name="Obj">The object to create</param>
+        /// <param name="Table">The table to create the object in</param>
+        public async Task InsertUpdateAsync<T>(T Obj, string Table)
+        {
+            using (MySqlConnection connection = new MySqlConnection(ConnectionString))
+            {
+                await connection.OpenAsync();
+                using (MySqlCommand Command = CommandBuilder.BuildInsertUpdateCommand<T>(Obj, Table, connection))
+                {
+                    await Command.ExecuteNonQueryAsync();
+                }
+                await connection.CloseAsync();
             }
         }
 

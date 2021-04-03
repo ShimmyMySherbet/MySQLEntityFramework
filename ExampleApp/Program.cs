@@ -10,9 +10,15 @@ namespace ExampleApp
     {
         private static void Main(string[] args)
         {
-            MySQLEntityClient Client = new MySQLEntityClient("127.0.0.1", "TestDatabase", "TestDatabase", "testdatabase", 3306, true);
+            MySQLEntityClient Client = new MySQLEntityClient("127.0.0.1", "TestDatabase", "kn8hSzrg2OVhTWHN", "test", 3306, true);
             Client.Connect();
             Console.WriteLine($"Connected: {Client.Connected}");
+
+            if (!Client.TableExists("Users"))
+            {
+                Client.CreateTable<UserAccount>("Users");
+            }
+
 
             int UserCount = Client.QuerySingle<int>("Select COUNT(*) From Users");
             Console.WriteLine($"Accounts: {UserCount}");
@@ -34,6 +40,8 @@ namespace ExampleApp
                 Console.Write("SteamID: ");
                 userAccount.SteamID = Convert.ToUInt64(Console.ReadLine());
 
+                userAccount.Created = DateTime.Now;
+
                 // Sudo Hash Data
                 byte[] Buffer = new byte[16];
                 using (RNGCryptoServiceProvider RNG = new RNGCryptoServiceProvider())
@@ -41,7 +49,7 @@ namespace ExampleApp
 
                 userAccount.HashData = Buffer;
 
-                Client.Insert(userAccount, "Users");
+                Client.InsertUpdate(userAccount, "Users");
             }
             Console.WriteLine();
 

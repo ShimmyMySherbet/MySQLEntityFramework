@@ -92,7 +92,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     Metas.Add(new SQLMetaField(Name, Metas.Count, Field));
                 }
             }
-            string Command = $"INSERT INTO `{Table}` ({string.Join(", ", Metas.CastEnumeration(x => x.Name))}) VALUES ({string.Join(", ", Metas.CastEnumeration(x => $"@{x.Index}"))}) ON DUPLICATE KEY UPDATE;";
+            string Command = $"INSERT INTO `{Table}` ({string.Join(", ", Metas.CastEnumeration(x => x.Name))}) VALUES ({string.Join(", ", Metas.CastEnumeration(x => $"@{x.Index}"))}) ON DUPLICATE KEY UPDATE {string.Join(", ", Metas.Select(x => $"`{x.Name}`=@{x.Index}"))};";
             MySqlCommand sqlCommand = (Connection != null ? new MySqlCommand(Command, Connection) : new MySqlCommand(Command));
             foreach (SQLMetaField Meta in Metas)
                 sqlCommand.Parameters.AddWithValue($"@{Meta.Index}", Meta.Field.GetValue(Obj));
