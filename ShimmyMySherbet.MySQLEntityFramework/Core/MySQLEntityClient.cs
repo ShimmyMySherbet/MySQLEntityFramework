@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using MySql.Data.MySqlClient;
 using ShimmyMySherbet.MySQL.EF.Internals;
 using ShimmyMySherbet.MySQL.EF.Models.TypeModel;
@@ -85,6 +86,16 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         }
 
         /// <summary>
+        /// Only required for when ReuseSingleConnection is enabled.
+        /// </summary>
+        /// <returns>Connected</returns>
+        public async Task<bool> ConnectAsync()
+        {
+            ActiveConnection = new MySqlConnection(ConnectionString);
+            return await TryConnectAsync(ActiveConnection);
+        }
+
+        /// <summary>
         /// Disconnects the active connection when ReuseSingleConnection is enabled.
         /// </summary>
         public void Disconnect()
@@ -92,6 +103,17 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             if (ReuseSingleConnection)
             {
                 ActiveConnection.Close();
+            }
+        }
+
+        /// <summary>
+        /// Disconnects the active connection when ReuseSingleConnection is enabled.
+        /// </summary>
+        public async Task DisconnectAsync()
+        {
+            if (ReuseSingleConnection)
+            {
+                await ActiveConnection.CloseAsync();
             }
         }
 
@@ -122,6 +144,24 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                         Command.ExecuteNonQuery();
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Creates the object in the database table.
+        /// </summary>
+        /// <param name="Obj">The object to create</param>
+        /// <param name="Table">The table to create the object in</param>
+        public async Task InsertAsync<T>(T Obj, string Table)
+        {
+            using (MySqlConnection connection = new MySqlConnection(ConnectionString))
+            {
+                connection.Open();
+                using (MySqlCommand Command = CommandBuilder.BuildInsertCommand<T>(Obj, Table, connection))
+                {
+                    await Command.ExecuteNonQueryAsync();
+                }
+                connection.Close();
             }
         }
 
@@ -183,6 +223,22 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         }
 
         /// <summary>
+        /// Deletes the object from a database table. Object Model must have an associated Primary Key.
+        /// </summary>
+        public async Task DeleteAsync<T>(T Obj, string Table)
+        {
+            using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+            {
+                Connection.Open();
+                using (MySqlCommand Command = CommandBuilder.BuildDeleteCommand<T>(Obj, Table, Connection))
+                {
+                    await Command.ExecuteNonQueryAsync();
+                }
+                Connection.Close();
+            }
+        }
+
+        /// <summary>
         /// Creates a database table using the provided class model.
         /// </summary>
         public void CreateTable<T>(string TableName)
@@ -206,6 +262,21 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                     {
                         Command.ExecuteNonQuery();
                     }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Creates a database table using the provided class model.
+        /// </summary>
+        public async Task CreateTableAsync<T>(string TableName)
+        {
+            using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+            {
+                Connection.Open();
+                using (MySqlCommand Command = CommandBuilder.BuildCreateTableCommand<T>(TableName, Connection))
+                {
+                    await Command.ExecuteNonQueryAsync();
                 }
             }
         }
@@ -235,6 +306,22 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                         Command.ExecuteNonQuery();
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Updates an object in the specified database table. Object Model must have an associated Primary Key.
+        /// </summary>
+        public async Task UpdateAsync<T>(T Obj, string Table)
+        {
+            using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+            {
+                Connection.Open();
+                using (MySqlCommand Command = CommandBuilder.BuildUpdateCommand<T>(Obj, Table, Connection))
+                {
+                    await Command.ExecuteNonQueryAsync();
+                }
+                Connection.Close();
             }
         }
 
@@ -288,11 +375,25 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             {
                 using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
                 {
+                    Connection.Open();
                     using (MySqlCommand Command = CommandBuilder.BuildCommand(Connection, "DROP TABLE @0", Table))
                     {
                         Command.ExecuteNonQuery();
                     }
                 }
+            }
+        }
+
+        public async Task DeleteTableAsync(string Table)
+        {
+            using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+            {
+                await Connection.OpenAsync();
+                using (MySqlCommand Command = CommandBuilder.BuildCommand(Connection, "DROP TABLE @0", Table))
+                {
+                    await Command.ExecuteNonQueryAsync();
+                }
+                await Connection.CloseAsync();
             }
         }
 
@@ -302,6 +403,20 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             try
             {
                 connection.Open();
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+            return true;
+        }
+
+        private async Task<bool> TryConnectAsync(MySqlConnection connection)
+        {
+            if (connection.State == System.Data.ConnectionState.Open) return true;
+            try
+            {
+                await connection.OpenAsync();
             }
             catch (Exception)
             {
@@ -337,6 +452,24 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         }
 
         /// <summary>
+        /// Executes the given query and returns the results.
+        /// </summary>
+        /// <typeparam name="T">The query return type</typeparam>
+        /// <param name="Command">The SQL Query</param>
+        /// <param name="Parameters">The SQL Command Parameters (@i or {i} format)</param>
+        /// <returns>Results from query</returns>
+        public async Task<List<T>> QueryAsync<T>(string Command, params object[] Parameters)
+        {
+            using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+            {
+                await Connection.OpenAsync();
+                var value = await Reader.RetriveFromDatabaseAsync<T>(Connection, Command, Parameters);
+                await Connection.CloseAsync();
+                return value;
+            }
+        }
+
+        /// <summary>
         /// Excecutes the given query and returns a single result.
         /// </summary>
         /// <param name="Command">The SQL Query</param>
@@ -348,7 +481,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             {
                 lock (ActiveConnection)
                 {
-                    List<T> Results = Reader.RetriveFromDatabase<T>(ActiveConnection, Command, Parameters);
+                    List<T> Results = Reader.RetriveFromDatabaseCapped<T>(ActiveConnection, 1, Command, Parameters);
                     if (Results.Count != 0)
                     {
                         return Results[0];
@@ -364,7 +497,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                 using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
                 {
                     Connection.Open();
-                    List<T> Results = Reader.RetriveFromDatabase<T>(Connection, Command, Parameters);
+                    List<T> Results = Reader.RetriveFromDatabaseCapped<T>(Connection, 1, Command, Parameters);
                     if (Results.Count != 0)
                     {
                         return Results[0];
@@ -373,6 +506,66 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                     {
                         return default;
                     }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Excecutes the given query and returns a single result.
+        /// </summary>
+        /// <param name="Command">The SQL Query</param>
+        /// <param name="Parameters">The SQL Command Parameters (@i or {i} format)</param>
+        /// <returns>First result, or null if no results.</returns>
+        public async Task<T> QuerySingleAsync<T>(string Command, params object[] Parameters)
+        {
+            using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+            {
+                await Connection.OpenAsync();
+                List<T> Results = await Reader.RetriveFromDatabaseCappedAsync<T>(Connection, 1, Command, Parameters);
+                if (Results.Count != 0)
+                {
+                    return Results[0];
+                }
+                else
+                {
+                    return default;
+                }
+            }
+        }
+
+        public int ExecuteNonQuery(string Command, params object[] Parameters)
+        {
+            if (ReuseSingleConnection)
+            {
+                lock (ActiveConnection)
+                {
+                    using (MySqlCommand command = CommandBuilder.BuildCommand(ActiveConnection, Command, Parameters))
+                    {
+                        return command.ExecuteNonQuery();
+                    }
+                }
+            }
+            else
+            {
+                using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+                {
+                    Connection.Open();
+                    using (MySqlCommand command = CommandBuilder.BuildCommand(Connection, Command, Parameters))
+                    {
+                        return command.ExecuteNonQuery();
+                    }
+                }
+            }
+        }
+
+        public async Task<int> ExecuteNonQueryAsync(string Command, params object[] Parameters)
+        {
+            using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+            {
+                await Connection.OpenAsync();
+                using (MySqlCommand command = CommandBuilder.BuildCommand(Connection, Command, Parameters))
+                {
+                    return await command.ExecuteNonQueryAsync();
                 }
             }
         }

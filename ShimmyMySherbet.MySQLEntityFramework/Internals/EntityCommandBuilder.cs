@@ -67,6 +67,38 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             return sqlCommand;
         }
 
+        public MySqlCommand BuildInsertUpdateCommand<T>(T Obj, string Table, MySqlConnection Connection = null)
+        {
+            List<SQLMetaField> Metas = new List<SQLMetaField>();
+            foreach (FieldInfo Field in typeof(T).GetFields())
+            {
+                bool Include = true;
+                string Name = Field.Name;
+                foreach (Attribute Attrib in Attribute.GetCustomAttributes(Field))
+                {
+                    if (Attrib is SQLOmit || Attrib is SQLIgnore)
+                    {
+                        Include = false;
+                        break;
+                    }
+                    else if (Attrib is SQLPropertyName)
+                    {
+                        Name = ((SQLPropertyName)Attrib).Name;
+                    }
+                }
+                if (Include)
+                {
+                    if (Metas.Where(x => string.Equals(x.Name, Name, StringComparison.InvariantCultureIgnoreCase)).Count() != 0) continue;
+                    Metas.Add(new SQLMetaField(Name, Metas.Count, Field));
+                }
+            }
+            string Command = $"INSERT INTO `{Table}` ({string.Join(", ", Metas.CastEnumeration(x => x.Name))}) VALUES ({string.Join(", ", Metas.CastEnumeration(x => $"@{x.Index}"))}) ON DUPLICATE KEY UPDATE;";
+            MySqlCommand sqlCommand = (Connection != null ? new MySqlCommand(Command, Connection) : new MySqlCommand(Command));
+            foreach (SQLMetaField Meta in Metas)
+                sqlCommand.Parameters.AddWithValue($"@{Meta.Index}", Meta.Field.GetValue(Obj));
+            return sqlCommand;
+        }
+
         public MySqlCommand BuildUpdateCommand<T>(T Obj, string Table, MySqlConnection Connection = null)
         {
             List<SQLMetaField> Metas = new List<SQLMetaField>();
