@@ -23,7 +23,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models.TypeModel.Types
     {
     }
 
-    [SQLTypeName("TINYINT"), SQLSigned(true), SQLNetType(typeof(byte))]
+    [SQLTypeName("TINYINT"), SQLSigned(false), SQLNetType(typeof(byte))]
     public sealed class SQLTypeByte : SQLType
     {
     }

@@ -179,8 +179,6 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                 {
                     using (MySqlCommand Command = CommandBuilder.BuildInsertUpdateCommand<T>(Obj, Table, ActiveConnection))
                     {
-                        Console.WriteLine(Command.CommandText);
-
                         Command.ExecuteNonQuery();
                     }
                 }
