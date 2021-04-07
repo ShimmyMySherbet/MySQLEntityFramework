@@ -27,8 +27,12 @@ namespace ShimmyMySherbet.MySQL.EF.Models.TypeModel.Types
     public sealed class SQLTypeByte : SQLType
     {
     }
+      [SQLTypeName("TINYINT"), SQLSigned(true), SQLNetType(typeof(sbyte))]
+    public sealed class SQLTypeSByte : SQLType
+    {
+    }
 
-    [SQLTypeName("MEDIUMINT"), SQLNetType(null)]
+    [SQLTypeName("MEDIUMINT"), SQLSigned(true), SQLNetType(null)]
     public sealed class SQLTypeMediumInt : SQLType
     {
     }
@@ -48,12 +52,12 @@ namespace ShimmyMySherbet.MySQL.EF.Models.TypeModel.Types
     {
     }
 
-    [SQLTypeName("DOUBLE"), SQLNetType(typeof(double))]
+    [SQLTypeName("DOUBLE"), SQLSigned(true), SQLNetType(typeof(double))]
     public sealed class SQLTypeDouble : SQLType
     {
     }
 
-    [SQLTypeName("DECIMAL"), SQLNetType(typeof(decimal))]
+    [SQLTypeName("DECIMAL"), SQLSigned(true), SQLNetType(typeof(decimal))]
     public sealed class SQLTypeDecimal : SQLType
     {
     }
