@@ -43,7 +43,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models.TypeModel.Types
     {
     }
 
-    [SQLTypeName("FLOAT"), SQLNetType(typeof(float))]
+    [SQLTypeName("FLOAT"), SQLSigned(true), SQLNetType(typeof(float))]
     public sealed class SQLTypeFloat : SQLType
     {
     }
