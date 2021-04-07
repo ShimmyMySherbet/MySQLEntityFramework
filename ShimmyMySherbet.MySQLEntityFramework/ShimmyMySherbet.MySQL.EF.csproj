@@ -8,11 +8,8 @@
     <RepositoryUrl>https://github.com/ShimmyMySherbet/MySQLEntityFramework</RepositoryUrl>
     <PackageTags>MySQL Wrapper EntityFramework</PackageTags>
     <NeutralLanguage>en</NeutralLanguage>
-    <PackageReleaseNotes>Added Async Methods
-Added Insert Update Method
-Added Async Readers
-Added Read Capping</PackageReleaseNotes>
-    <Version>1.2.0</Version>
+    <PackageReleaseNotes>Fixed a few SQL Types signed flags</PackageReleaseNotes>
+    <Version>1.2.5</Version>
   </PropertyGroup>
 
   <ItemGroup>
