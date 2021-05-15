@@ -1,16 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using MySql.Data.MySqlClient;
+﻿using MySql.Data.MySqlClient;
 using ShimmyMySherbet.MySQL.EF.Internals;
 using ShimmyMySherbet.MySQL.EF.Models.TypeModel;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace ShimmyMySherbet.MySQL.EF.Core
 {
-    public sealed class MySQLEntityClient
+    public class MySQLEntityClient : IDisposable
     {
+        public MySqlConnection ActiveConnection { get; protected set; }
+
         public string ConnectionString;
-        private MySqlConnection ActiveConnection;
+        protected bool AutoDispose = true;
 
         /// <summary>
         /// Declares if a single connection should be used. If this is enabled, all actions will utilise a single connection. If the connection is in use, the methods will block untill it is available.
@@ -19,9 +21,9 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// </summary>
         public bool ReuseSingleConnection { get; private set; }
 
-        private EntityCommandBuilder CommandBuilder = new EntityCommandBuilder();
-        private MySQLEntityReader Reader = new MySQLEntityReader();
-        private SQLTypeHelper IndexedTypeHelper = new SQLTypeHelper();
+        protected EntityCommandBuilder CommandBuilder = new EntityCommandBuilder();
+        protected MySQLEntityReader Reader = new MySQLEntityReader();
+        protected SQLTypeHelper IndexedTypeHelper = new SQLTypeHelper();
 
         /// <summary>
         /// </summary>
@@ -34,6 +36,18 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             this.ConnectionString = ConnectionString;
             this.ReuseSingleConnection = ReuseSingleConnection;
             Reader.IndexedHelper = IndexedTypeHelper;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of MySQLEntityClient in ReuseConnection mode.
+        /// </summary>
+        /// <param name="connection">The conenction to use</param>
+        /// <param name="autoDispose">Specifies if the connection should be disposed when the entity client is disposed.</param>
+        public MySQLEntityClient(MySqlConnection connection, bool autoDispose = true)
+        {
+            ReuseSingleConnection = true;
+            ActiveConnection = connection;
+            AutoDispose = autoDispose;
         }
 
         /// <summary>
@@ -83,6 +97,15 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         {
             ActiveConnection = new MySqlConnection(ConnectionString);
             return TryConnect(ActiveConnection);
+        }
+
+        /// <summary>
+        /// Only required for when ReuseSingleConnection is enabled.
+        /// </summary>
+        public MySQLEntityClient Connect(out bool connected)
+        {
+            connected = Connect();
+            return this;
         }
 
         /// <summary>
@@ -617,6 +640,14 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                 {
                     return await command.ExecuteNonQueryAsync();
                 }
+            }
+        }
+
+        public void Dispose()
+        {
+            if (AutoDispose && ActiveConnection != null)
+            {
+                ActiveConnection.Dispose();
             }
         }
     }
