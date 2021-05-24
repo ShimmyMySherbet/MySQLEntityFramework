@@ -14,7 +14,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
     public class EntityCommandBuilder
     {
         private SQLTypeHelper TypeHelper = new SQLTypeHelper();
-        public MySqlCommand BuildCommand(string Command, params object[] Arguments)
+        public static MySqlCommand BuildCommand(string Command, params object[] Arguments)
         {
             MySqlCommand Command_ = new MySqlCommand(Command);
             for (int i = 0; i < Arguments.Length; i++)
@@ -24,7 +24,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             }
             return Command_;
         }
-        public MySqlCommand BuildCommand(MySqlConnection Connection, string Command, params object[] Arguments)
+        public static MySqlCommand BuildCommand(MySqlConnection Connection, string Command, params object[] Arguments)
         {
             MySqlCommand Command_ = new MySqlCommand(Command, Connection);
             for (int i = 0; i < Arguments.Length; i++)
@@ -35,7 +35,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             return Command_;
         }
 
-        public MySqlCommand BuildInsertCommand<T>(T Obj, string Table, MySqlConnection Connection = null)
+        public static MySqlCommand BuildInsertCommand<T>(T Obj, string Table, MySqlConnection Connection = null)
         {
             List<SQLMetaField> Metas = new List<SQLMetaField>();
             foreach (FieldInfo Field in typeof(T).GetFields())
@@ -67,7 +67,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             return sqlCommand;
         }
 
-        public MySqlCommand BuildInsertUpdateCommand<T>(T Obj, string Table, MySqlConnection Connection = null)
+        public static MySqlCommand BuildInsertUpdateCommand<T>(T Obj, string Table, MySqlConnection Connection = null)
         {
             List<SQLMetaField> Metas = new List<SQLMetaField>();
             foreach (FieldInfo Field in typeof(T).GetFields())
@@ -99,7 +99,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             return sqlCommand;
         }
 
-        public MySqlCommand BuildUpdateCommand<T>(T Obj, string Table, MySqlConnection Connection = null)
+        public static MySqlCommand BuildUpdateCommand<T>(T Obj, string Table, MySqlConnection Connection = null)
         {
             List<SQLMetaField> Metas = new List<SQLMetaField>();
             SQLMetaField PrimaryKey = null;
@@ -108,9 +108,14 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                 bool Include = true;
                 string Name = Field.Name;
                 bool Primary = false;
+
+
+                bool isPrimary = Attribute.IsDefined(Field, typeof(SQLPrimaryKey));
                 foreach (Attribute Attrib in Attribute.GetCustomAttributes(Field))
                 {
-                    if (Attrib is SQLOmit || Attrib is SQLIgnore)
+
+
+                    if ((Attrib is SQLOmit && !isPrimary) || Attrib is SQLIgnore)
                     {
                         Include = false;
                         break;
@@ -152,7 +157,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             return sqlCommand;
         }
 
-        public MySqlCommand BuildDeleteCommand<T>(T Obj, string Table, MySqlConnection Connection = null)
+        public static MySqlCommand BuildDeleteCommand<T>(T Obj, string Table, MySqlConnection Connection = null)
         {
             SQLMetaField PrimaryKey = null;
             foreach (FieldInfo Field in typeof(T).GetFields())

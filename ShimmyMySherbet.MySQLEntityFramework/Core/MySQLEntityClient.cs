@@ -151,7 +151,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             {
                 lock (ActiveConnection)
                 {
-                    using (MySqlCommand Command = CommandBuilder.BuildInsertCommand<T>(Obj, Table, ActiveConnection))
+                    using (MySqlCommand Command = EntityCommandBuilder.BuildInsertCommand<T>(Obj, Table, ActiveConnection))
                     {
                         Command.ExecuteNonQuery();
                     }
@@ -162,7 +162,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                 using (MySqlConnection connection = new MySqlConnection(ConnectionString))
                 {
                     connection.Open();
-                    using (MySqlCommand Command = CommandBuilder.BuildInsertCommand<T>(Obj, Table, connection))
+                    using (MySqlCommand Command = EntityCommandBuilder.BuildInsertCommand<T>(Obj, Table, connection))
                     {
                         Command.ExecuteNonQuery();
                     }
@@ -180,7 +180,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             using (MySqlConnection connection = new MySqlConnection(ConnectionString))
             {
                 await connection.OpenAsync();
-                using (MySqlCommand Command = CommandBuilder.BuildInsertCommand<T>(Obj, Table, connection))
+                using (MySqlCommand Command = EntityCommandBuilder.BuildInsertCommand<T>(Obj, Table, connection))
                 {
                     await Command.ExecuteNonQueryAsync();
                 }
@@ -200,7 +200,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             {
                 lock (ActiveConnection)
                 {
-                    using (MySqlCommand Command = CommandBuilder.BuildInsertUpdateCommand<T>(Obj, Table, ActiveConnection))
+                    using (MySqlCommand Command = EntityCommandBuilder.BuildInsertUpdateCommand<T>(Obj, Table, ActiveConnection))
                     {
                         Command.ExecuteNonQuery();
                     }
@@ -211,7 +211,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                 using (MySqlConnection connection = new MySqlConnection(ConnectionString))
                 {
                     connection.Open();
-                    using (MySqlCommand Command = CommandBuilder.BuildInsertUpdateCommand<T>(Obj, Table, connection))
+                    using (MySqlCommand Command = EntityCommandBuilder.BuildInsertUpdateCommand<T>(Obj, Table, connection))
                     {
                         Command.ExecuteNonQuery();
                     }
@@ -230,7 +230,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             using (MySqlConnection connection = new MySqlConnection(ConnectionString))
             {
                 await connection.OpenAsync();
-                using (MySqlCommand Command = CommandBuilder.BuildInsertUpdateCommand<T>(Obj, Table, connection))
+                using (MySqlCommand Command = EntityCommandBuilder.BuildInsertUpdateCommand<T>(Obj, Table, connection))
                 {
                     await Command.ExecuteNonQueryAsync();
                 }
@@ -276,7 +276,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             {
                 lock (ActiveConnection)
                 {
-                    using (MySqlCommand Command = CommandBuilder.BuildDeleteCommand<T>(Obj, Table, ActiveConnection))
+                    using (MySqlCommand Command = EntityCommandBuilder.BuildDeleteCommand<T>(Obj, Table, ActiveConnection))
                     {
                         Command.ExecuteNonQuery();
                     }
@@ -287,7 +287,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                 using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
                 {
                     Connection.Open();
-                    using (MySqlCommand Command = CommandBuilder.BuildDeleteCommand<T>(Obj, Table, Connection))
+                    using (MySqlCommand Command = EntityCommandBuilder.BuildDeleteCommand<T>(Obj, Table, Connection))
                     {
                         Command.ExecuteNonQuery();
                     }
@@ -303,7 +303,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
             {
                 Connection.Open();
-                using (MySqlCommand Command = CommandBuilder.BuildDeleteCommand<T>(Obj, Table, Connection))
+                using (MySqlCommand Command = EntityCommandBuilder.BuildDeleteCommand<T>(Obj, Table, Connection))
                 {
                     await Command.ExecuteNonQueryAsync();
                 }
@@ -363,7 +363,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             {
                 lock (ActiveConnection)
                 {
-                    using (MySqlCommand Command = CommandBuilder.BuildUpdateCommand<T>(Obj, Table, ActiveConnection))
+                    using (MySqlCommand Command = EntityCommandBuilder.BuildUpdateCommand<T>(Obj, Table, ActiveConnection))
                     {
                         Command.ExecuteNonQuery();
                     }
@@ -374,7 +374,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                 using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
                 {
                     Connection.Open();
-                    using (MySqlCommand Command = CommandBuilder.BuildUpdateCommand<T>(Obj, Table, Connection))
+                    using (MySqlCommand Command = EntityCommandBuilder.BuildUpdateCommand<T>(Obj, Table, Connection))
                     {
                         Command.ExecuteNonQuery();
                     }
@@ -390,7 +390,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
             {
                 Connection.Open();
-                using (MySqlCommand Command = CommandBuilder.BuildUpdateCommand<T>(Obj, Table, Connection))
+                using (MySqlCommand Command = EntityCommandBuilder.BuildUpdateCommand<T>(Obj, Table, Connection))
                 {
                     await Command.ExecuteNonQueryAsync();
                 }
@@ -409,7 +409,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             {
                 lock (ActiveConnection)
                 {
-                    using (MySqlCommand Command = CommandBuilder.BuildCommand(ActiveConnection,
+                    using (MySqlCommand Command = EntityCommandBuilder.BuildCommand(ActiveConnection,
                         "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = @0 AND TABLE_NAME = @1;", Database, Table))
                     using (MySqlDataReader Reader = Command.ExecuteReader())
                     {
@@ -422,7 +422,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                 using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
                 {
                     Connection.Open();
-                    using (MySqlCommand Command = CommandBuilder.BuildCommand(Connection,
+                    using (MySqlCommand Command = EntityCommandBuilder.BuildCommand(Connection,
                         "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = @0 AND TABLE_NAME = @1;", Database, Table))
                     using (MySqlDataReader Reader = Command.ExecuteReader())
                     {
@@ -438,7 +438,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             {
                 lock (ActiveConnection)
                 {
-                    using (MySqlCommand Command = CommandBuilder.BuildCommand(ActiveConnection, "DROP TABLE @0", Table))
+                    using (MySqlCommand Command = EntityCommandBuilder.BuildCommand(ActiveConnection, "DROP TABLE @0", Table))
                     {
                         Command.ExecuteNonQuery();
                     }
@@ -449,7 +449,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                 using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
                 {
                     Connection.Open();
-                    using (MySqlCommand Command = CommandBuilder.BuildCommand(Connection, "DROP TABLE @0", Table))
+                    using (MySqlCommand Command = EntityCommandBuilder.BuildCommand(Connection, "DROP TABLE @0", Table))
                     {
                         Command.ExecuteNonQuery();
                     }
@@ -462,7 +462,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
             {
                 await Connection.OpenAsync();
-                using (MySqlCommand Command = CommandBuilder.BuildCommand(Connection, "DROP TABLE @0", Table))
+                using (MySqlCommand Command = EntityCommandBuilder.BuildCommand(Connection, "DROP TABLE @0", Table))
                 {
                     await Command.ExecuteNonQueryAsync();
                 }
@@ -612,7 +612,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             {
                 lock (ActiveConnection)
                 {
-                    using (MySqlCommand command = CommandBuilder.BuildCommand(ActiveConnection, Command, Parameters))
+                    using (MySqlCommand command = EntityCommandBuilder.BuildCommand(ActiveConnection, Command, Parameters))
                     {
                         return command.ExecuteNonQuery();
                     }
@@ -623,7 +623,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                 using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
                 {
                     Connection.Open();
-                    using (MySqlCommand command = CommandBuilder.BuildCommand(Connection, Command, Parameters))
+                    using (MySqlCommand command = EntityCommandBuilder.BuildCommand(Connection, Command, Parameters))
                     {
                         return command.ExecuteNonQuery();
                     }
@@ -636,7 +636,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
             {
                 await Connection.OpenAsync();
-                using (MySqlCommand command = CommandBuilder.BuildCommand(Connection, Command, Parameters))
+                using (MySqlCommand command = EntityCommandBuilder.BuildCommand(Connection, Command, Parameters))
                 {
                     return await command.ExecuteNonQueryAsync();
                 }
