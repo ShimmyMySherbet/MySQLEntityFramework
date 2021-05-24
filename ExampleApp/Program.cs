@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Security.Cryptography;
+using System.Text;
 using ShimmyMySherbet.MySQL.EF.Core;
 using ShimmyMySherbet.MySQL.EF.Models;
 
@@ -12,6 +14,8 @@ namespace ExampleApp
         {
             MySQLEntityClient Client = new MySQLEntityClient("127.0.0.1", "TestDatabase", "kn8hSzrg2OVhTWHN", "test", 3306, true);
             Client.Connect();
+            var mysqlConnection = Client.ActiveConnection;
+
             Console.WriteLine($"Connected: {Client.Connected}");
 
             if (!Client.TableExists("Users"))
@@ -19,89 +23,48 @@ namespace ExampleApp
                 Client.CreateTable<UserAccount>("Users");
             }
 
+            var max = 1000;
 
-            int UserCount = Client.QuerySingle<int>("Select COUNT(*) From Users");
-            Console.WriteLine($"Accounts: {UserCount}");
+            var exe = new BulkInserter<UserAccount>(mysqlConnection, "Users");
 
+            Console.WriteLine("Starting bulk insert build");
 
-            Console.Write("Create User Account. [Y/N]");
+            var build = new Stopwatch();
+            build.Start();
 
-            if (Console.ReadKey().Key == ConsoleKey.Y)
+            for (uint i = 0; i < max; i++)
             {
-                Console.WriteLine();
-                UserAccount userAccount = new UserAccount();
-
-                Console.Write("UserName: ");
-                userAccount.Username = Console.ReadLine();
-
-                Console.Write("Email Address: ");
-                userAccount.EmailAddress = Console.ReadLine();
-
-                Console.Write("SteamID: ");
-                userAccount.SteamID = Convert.ToUInt64(Console.ReadLine());
-
-                userAccount.Created = DateTime.Now;
-
-                // Sudo Hash Data
-                byte[] Buffer = new byte[16];
-                using (RNGCryptoServiceProvider RNG = new RNGCryptoServiceProvider())
-                    RNG.GetBytes(Buffer);
-
-                userAccount.HashData = Buffer;
-
-                Client.InsertUpdate(userAccount, "Users");
-            }
-            Console.WriteLine();
-
-            Console.Write("Look up Username: ");
-            string LookupUsername = Console.ReadLine();
-            UserAccount LookupAccount = Client.QuerySingle<UserAccount>("SELECT * FROM Users WHERE Username = @0", LookupUsername);
-            if (LookupAccount == null)
-            {
-                Console.WriteLine("No user account exists with that name.");
-            } else
-            {
-                PrintUser(LookupAccount);
-                Console.Write("Change Account Email. [Y/N]");
-                if (Console.ReadKey().Key == ConsoleKey.Y)
+                var user = new UserAccount()
                 {
-                    Console.WriteLine();
-                    Console.Write("New Email Address: ");
-                    string Email = Console.ReadLine();
-                    LookupAccount.EmailAddress = Email;
-
-                    Client.Update(LookupAccount, "Users");
-                    Console.WriteLine("Updated.");
-                } else
-                {
-                    Console.Write("Delete User Account. [Y/N]");
-                    if (Console.ReadKey().Key == ConsoleKey.Y)
-                    {
-                        Client.Delete(LookupAccount, "Users");
-                    }
-                    Console.WriteLine();
-                }
-                Console.WriteLine();
+                    Created = DateTime.Now,
+                    EmailAddress = $"EXTUser{i}",
+                    HashData = new byte[6] /*cbf populating with rand data*/,
+                    SteamID = i,
+                    Username = $"user_{i}"
+                };
+                exe.Insert(user);
             }
 
+            build.Stop();
+            var buildSpeed = Math.Round((max / (double)build.ElapsedMilliseconds) * 1000, 2);
+            Console.WriteLine($"Completed build of {max} inserts in {build.ElapsedMilliseconds}ms @ {buildSpeed}p/s");
 
-            Console.WriteLine();
-            Console.Write("Show 10 Users. [Y/N]");
-            if (Console.ReadKey().Key == ConsoleKey.Y)
-            {
-                Console.WriteLine();
-                foreach(UserAccount Account in Client.Query<UserAccount>("SELECT * FROM Users LIMIT 10"))
-                {
-                    PrintUser(Account);
-                }
-            }
-            Console.WriteLine();
+            Stopwatch commit = new Stopwatch();
+            commit.Start();
 
+            exe.Commit();
 
+            commit.Stop();
 
+            var comitSpeed = Math.Round((max / (double)commit.ElapsedMilliseconds) * 1000, 2);
+            Console.WriteLine($"Comitted {max} entries in {commit.ElapsedMilliseconds}ms @ {comitSpeed}p/s");
 
 
-                Console.ReadLine();
+
+
+            Console.ReadLine();
+
+
         }
 
 

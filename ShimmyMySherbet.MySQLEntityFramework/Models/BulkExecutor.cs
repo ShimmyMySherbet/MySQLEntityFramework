@@ -5,12 +5,17 @@ using System.Threading.Tasks;
 
 namespace ShimmyMySherbet.MySQL.EF.Models
 {
+    /// <summary>
+    /// Used to bulk execute commands against a db.
+    /// NOTE: if your work is insert-heavy, use BulkInserter instead.
+    /// </summary>
     public class BulkExecutor
     {
         private StringBuilder m_Commands = new StringBuilder();
         private MySqlConnection m_Connection;
         private PrefixAssigner m_Assigner = new PrefixAssigner();
         private PropertyList m_MasterPropertiesList = new PropertyList();
+
 
         public BulkExecutor(MySqlConnection connection)
         {
@@ -27,6 +32,10 @@ namespace ShimmyMySherbet.MySQL.EF.Models
             properties.Merge(m_MasterPropertiesList);
         }
 
+        /// <summary>
+        /// NOTE: Use BulkInserter instead where possible
+        /// </summary>
+        /// <see cref="BulkInserter{T}"/>
         public void Insert<T>(T Obj, string Table)
         {
             string value = EntityCommandBuilder.BuildInsertCommandContent(Obj, Table, m_Assigner.AssignPrefix(), out var properties);
@@ -75,6 +84,8 @@ namespace ShimmyMySherbet.MySQL.EF.Models
                     {
                         using (MySqlCommand command = new MySqlCommand(m_Commands.ToString(), m_Connection))
                         {
+                            command.CommandTimeout = 2147483;
+                            command.EnableCaching = false;
                             foreach (var p in m_MasterPropertiesList)
                             {
                                 command.Parameters.AddWithValue(p.Key, p.Value);
@@ -99,6 +110,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models
 
             using (MySqlCommand command = new MySqlCommand(cmdContent, m_Connection))
             {
+                command.CommandTimeout = 2147483;
                 foreach (var p in properties)
                 {
                     command.Parameters.AddWithValue(p.Key, p.Value);
