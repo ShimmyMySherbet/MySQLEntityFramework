@@ -1,19 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using MySql.Data.MySqlClient;
+﻿using MySql.Data.MySqlClient;
 using ShimmyMySherbet.MySQL.EF.Models;
 using ShimmyMySherbet.MySQL.EF.Models.Exceptions;
 using ShimmyMySherbet.MySQL.EF.Models.Internals;
 using ShimmyMySherbet.MySQL.EF.Models.TypeModel;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+
 #pragma warning disable CA2100
+
 namespace ShimmyMySherbet.MySQL.EF.Internals
 {
     public class EntityCommandBuilder
     {
         private SQLTypeHelper TypeHelper = new SQLTypeHelper();
+
         public static MySqlCommand BuildCommand(string Command, params object[] Arguments)
         {
             MySqlCommand Command_ = new MySqlCommand(Command);
@@ -24,6 +27,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             }
             return Command_;
         }
+
         public static MySqlCommand BuildCommand(MySqlConnection Connection, string Command, params object[] Arguments)
         {
             MySqlCommand Command_ = new MySqlCommand(Command, Connection);
@@ -33,6 +37,25 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                 if (Command.Contains($"@{i}")) Command_.Parameters.AddWithValue($"@{i}", Arguments[i]);
             }
             return Command_;
+        }
+
+        public static string BuildCommandContent(string Command, int prefix, out PropertyList properties, params object[] Arguments)
+        {
+            properties = new PropertyList();
+            for (int i = Arguments.Length - 1; i > 0; i--)
+            {
+                if (Command.Contains($"{{{i}}}"))
+                {
+                    Command = Command.Replace($"{{{i}}}", $"@_{prefix}_{i}");
+                    properties.Add($"@_{prefix}_{i}", Arguments[i]);
+                }
+                if (Command.Contains($"@{i}"))
+                {
+                    Command = Command.Replace($"@{i}", $"@_{prefix}_{i}");
+                    properties.Add($"@_{prefix}_{i}", Arguments[i]);
+                }
+            }
+            return Command;
         }
 
         public static MySqlCommand BuildInsertCommand<T>(T Obj, string Table, MySqlConnection Connection = null)
@@ -67,6 +90,39 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             return sqlCommand;
         }
 
+        public static string BuildInsertCommandContent<T>(T Obj, string Table, int prefix, out PropertyList properties)
+        {
+            List<SQLMetaField> Metas = new List<SQLMetaField>();
+            foreach (FieldInfo Field in typeof(T).GetFields())
+            {
+                bool Include = true;
+                string Name = Field.Name;
+                foreach (Attribute Attrib in Attribute.GetCustomAttributes(Field))
+                {
+                    if (Attrib is SQLOmit || Attrib is SQLIgnore)
+                    {
+                        Include = false;
+                        break;
+                    }
+                    else if (Attrib is SQLPropertyName)
+                    {
+                        Name = ((SQLPropertyName)Attrib).Name;
+                    }
+                }
+                if (Include)
+                {
+                    if (Metas.Where(x => string.Equals(x.Name, Name, StringComparison.InvariantCultureIgnoreCase)).Count() != 0) continue;
+                    Metas.Add(new SQLMetaField(Name, Metas.Count, Field));
+                }
+            }
+            string Command = $"INSERT INTO `{Table}` ({string.Join(", ", Metas.CastEnumeration(x => x.Name))}) VALUES ({string.Join(", ", Metas.CastEnumeration(x => $"@{prefix}_{x.Index}"))});";
+
+            properties = new PropertyList();
+            foreach (SQLMetaField Meta in Metas)
+                properties.Add($"@{prefix}_{Meta.Index}", Meta.Field.GetValue(Obj));
+            return Command;
+        }
+
         public static MySqlCommand BuildInsertUpdateCommand<T>(T Obj, string Table, MySqlConnection Connection = null)
         {
             List<SQLMetaField> Metas = new List<SQLMetaField>();
@@ -99,6 +155,39 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             return sqlCommand;
         }
 
+        public static string BuildInsertUpdateCommandContent<T>(T Obj, string Table, int prefix, out PropertyList properties)
+        {
+            List<SQLMetaField> Metas = new List<SQLMetaField>();
+            foreach (FieldInfo Field in typeof(T).GetFields())
+            {
+                bool Include = true;
+                string Name = Field.Name;
+                foreach (Attribute Attrib in Attribute.GetCustomAttributes(Field))
+                {
+                    if (Attrib is SQLOmit || Attrib is SQLIgnore)
+                    {
+                        Include = false;
+                        break;
+                    }
+                    else if (Attrib is SQLPropertyName)
+                    {
+                        Name = ((SQLPropertyName)Attrib).Name;
+                    }
+                }
+                if (Include)
+                {
+                    if (Metas.Where(x => string.Equals(x.Name, Name, StringComparison.InvariantCultureIgnoreCase)).Count() != 0) continue;
+                    Metas.Add(new SQLMetaField(Name, Metas.Count, Field));
+                }
+            }
+            string Command = $"INSERT INTO `{Table}` ({string.Join(", ", Metas.CastEnumeration(x => x.Name))}) VALUES ({string.Join(", ", Metas.CastEnumeration(x => $"@{prefix}_{x.Index}"))}) ON DUPLICATE KEY UPDATE {string.Join(", ", Metas.Select(x => $"`{x.Name}`=@{prefix}_{x.Index}"))};";
+
+            properties = new PropertyList();
+            foreach (SQLMetaField Meta in Metas)
+                properties.Add($"@{prefix}_{Meta.Index}", Meta.Field.GetValue(Obj));
+            return Command;
+        }
+
         public static MySqlCommand BuildUpdateCommand<T>(T Obj, string Table, MySqlConnection Connection = null)
         {
             List<SQLMetaField> Metas = new List<SQLMetaField>();
@@ -109,12 +198,9 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                 string Name = Field.Name;
                 bool Primary = false;
 
-
                 bool isPrimary = Attribute.IsDefined(Field, typeof(SQLPrimaryKey));
                 foreach (Attribute Attrib in Attribute.GetCustomAttributes(Field))
                 {
-
-
                     if ((Attrib is SQLOmit && !isPrimary) || Attrib is SQLIgnore)
                     {
                         Include = false;
@@ -157,6 +243,64 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             return sqlCommand;
         }
 
+        public static string BuildUpdateCommandContent<T>(T Obj, string Table, int prefix, out PropertyList properties)
+        {
+            List<SQLMetaField> Metas = new List<SQLMetaField>();
+            SQLMetaField PrimaryKey = null;
+            foreach (FieldInfo Field in typeof(T).GetFields())
+            {
+                bool Include = true;
+                string Name = Field.Name;
+                bool Primary = false;
+
+                bool isPrimary = Attribute.IsDefined(Field, typeof(SQLPrimaryKey));
+                foreach (Attribute Attrib in Attribute.GetCustomAttributes(Field))
+                {
+                    if ((Attrib is SQLOmit && !isPrimary) || Attrib is SQLIgnore)
+                    {
+                        Include = false;
+                        break;
+                    }
+                    else if (Attrib is SQLPropertyName)
+                    {
+                        Name = ((SQLPropertyName)Attrib).Name;
+                    }
+                    else if (Attrib is SQLPrimaryKey)
+                    {
+                        Primary = true;
+                    }
+                }
+                if (Include)
+                {
+                    SQLMetaField Meta = new SQLMetaField(Name, Metas.Count, Field);
+                    if (Primary)
+                    {
+                        PrimaryKey = Meta;
+                        foreach (SQLMetaField SubMeta in Metas.Where(x => string.Equals(x.Name, Meta.Name, StringComparison.InvariantCultureIgnoreCase)))
+                        {
+                            Metas.Remove(SubMeta);
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        if (Metas.Where(x => string.Equals(x.Name, Name, StringComparison.InvariantCultureIgnoreCase)).Count() != 0) continue;
+                        Metas.Add(new SQLMetaField(Name, Metas.Count, Field));
+                    }
+                }
+            }
+            if (PrimaryKey == null) throw new NoPrimaryKeyException();
+
+            string Command = $"UPDATE `{Table}` SET {string.Join(", ", Metas.CastEnumeration(x => $"{x.Name}=@{prefix}_{x.Index}"))} WHERE {PrimaryKey.Name}=@{prefix}KEY;";
+            properties = new PropertyList();
+            properties.Add($"@{prefix}KEY", PrimaryKey.Field.GetValue(Obj));
+
+            foreach (SQLMetaField Meta in Metas)
+                properties.Add($"@{prefix}_{Meta.Index}", Meta.Field.GetValue(Obj));
+
+            return Command;
+        }
+
         public static MySqlCommand BuildDeleteCommand<T>(T Obj, string Table, MySqlConnection Connection = null)
         {
             SQLMetaField PrimaryKey = null;
@@ -191,6 +335,45 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             MySqlCommand sqlCommand = (Connection != null ? new MySqlCommand(Command, Connection) : new MySqlCommand(Command));
             sqlCommand.Parameters.AddWithValue("@KEY", PrimaryKey.Field.GetValue(Obj));
             return sqlCommand;
+        }
+
+        public static string BuildDeleteCommandContent<T>(T Obj, string Table, int prefix, out PropertyList properties)
+        {
+            SQLMetaField PrimaryKey = null;
+            foreach (FieldInfo Field in typeof(T).GetFields())
+            {
+                bool Primary = false;
+                string Name = Field.Name;
+                foreach (Attribute Attrib in Attribute.GetCustomAttributes(Field))
+                {
+                    if (Attrib is SQLIgnore)
+                    {
+                        break;
+                    }
+                    else if (Attrib is SQLPrimaryKey)
+                    {
+                        Primary = true;
+                    }
+                    else if (Attrib is SQLPropertyName)
+                    {
+                        Name = ((SQLPropertyName)Attrib).Name;
+                    }
+                }
+                if (Primary)
+                {
+                    PrimaryKey = new SQLMetaField(Name, -1, Field);
+                    break;
+                }
+            }
+            if (PrimaryKey == null) throw new NoPrimaryKeyException();
+
+            string k1 = $"@{prefix}KEY";
+            string Command = $"DELETE FROM `{Table}` WHERE {PrimaryKey.Name}={k1};";
+
+            properties = new PropertyList();
+            properties.Add(k1, PrimaryKey.Field.GetValue(Obj));
+
+            return Command;
         }
 
         public MySqlCommand BuildCreateTableCommand<T>(string TableName, MySqlConnection Connection = null)
