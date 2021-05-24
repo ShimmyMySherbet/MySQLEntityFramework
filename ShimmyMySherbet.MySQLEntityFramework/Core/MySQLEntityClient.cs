@@ -188,6 +188,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
         }
 
+
         /// <summary>
         /// Creates the object in the database table.
         /// If an item with the same primary or unique key exists, it will update it instead.
