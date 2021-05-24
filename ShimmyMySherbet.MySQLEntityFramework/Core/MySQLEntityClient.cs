@@ -1,5 +1,6 @@
 ﻿using MySql.Data.MySqlClient;
 using ShimmyMySherbet.MySQL.EF.Internals;
+using ShimmyMySherbet.MySQL.EF.Models;
 using ShimmyMySherbet.MySQL.EF.Models.TypeModel;
 using System;
 using System.Collections.Generic;
@@ -28,13 +29,13 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <summary>
         /// </summary>
         /// <param name="ConnectionString">The SQL Connection String to use.</param>
-        /// <param name="ReuseSingleConnection">Declares if a single connection should be used. If this is enabled, all actions will utilise a single connection. If the connection is in use, the methods will block untill it is available.
+        /// <param name="singleConnectionMode">Declares if a single connection should be used. If this is enabled, all actions will utilise a single connection. If the connection is in use, the methods will block untill it is available.
         /// Enable this if you are just using this client on a single thread.
         /// NOTE: If this is enabled, you need to call Connect()</param>
-        public MySQLEntityClient(string ConnectionString, bool ReuseSingleConnection = false)
+        public MySQLEntityClient(string ConnectionString, bool singleConnectionMode = true)
         {
             this.ConnectionString = ConnectionString;
-            this.ReuseSingleConnection = ReuseSingleConnection;
+            this.ReuseSingleConnection = singleConnectionMode;
             Reader.IndexedHelper = IndexedTypeHelper;
         }
 
@@ -57,14 +58,23 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <param name="Password">The User Password</param>
         /// <param name="Database">The scoped detebase</param>
         /// <param name="Port">The port to use. Default: 3306</param>
-        /// <param name="ReuseSingleConnection">Declares if a single connection should be used. If this is enabled, all actions will utilise a single connection. If the connection is in use, the methods will block untill it is available.
+        /// <param name="singleConnectionMode">Declares if a single connection should be used. If this is enabled, all actions will utilise a single connection. If the connection is in use, the methods will block untill it is available.
         /// Enable this if you are just using this client on a single thread.
         /// NOTE: If this is enabled, you need to call Connect()</param>
-        public MySQLEntityClient(string Address, string Username, string Password = null, string Database = null, int Port = 3306, bool ReuseSingleConnection = false)
+        public MySQLEntityClient(string Address, string Username, string Password = null, string Database = null, int Port = 3306, bool singleConnectionMode = true)
         {
             ConnectionString = $"Server={Address};Uid={Username}{(Password != null ? $";Pwd={Password}" : "")}{(Database != null ? $";Database={Database}" : "")};Port={Port};";
-            this.ReuseSingleConnection = ReuseSingleConnection;
+            this.ReuseSingleConnection = singleConnectionMode;
             Reader.IndexedHelper = IndexedTypeHelper;
+            AutoDispose = singleConnectionMode;
+        }
+
+        /// <summary>
+        /// Initializes a new connection using the details provided in DatabaseSettings
+        /// </summary>
+        /// <param name="settings">Database connectio nsettings</param>
+        public MySQLEntityClient(DatabaseSettings settings, bool singleConnectionMode = true) : this(settings.DatabaseAddress, settings.DatabaseUsername, settings.DatabasePassword, settings.DatabaseName, settings.DatabasePort, singleConnectionMode)
+        {
         }
 
         public string Database
