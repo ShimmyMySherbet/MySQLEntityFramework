@@ -51,8 +51,19 @@ namespace ShimmyMySherbet.MySQL.EF.Models
                     m_SQLMetas.Add(new SQLMetaField(Name, m_SQLMetas.Count, Field));
                 }
             }
-            string Command = $"INSERT INTO `{Table}` ({string.Join(", ", m_SQLMetas.CastEnumeration(x => x.Name))}) VALUES";
-            m_CommandBuilder.Append(Command);
+            Reset();
+        }
+
+        public void Reset()
+        {
+            m_Assigner.Reset();
+            m_BuildProperties.Reset();
+            lock (m_CommandBuilder)
+            {
+                m_CommandBuilder = new StringBuilder();
+                string Command = $"INSERT INTO `{Table}` ({string.Join(", ", m_SQLMetas.CastEnumeration(x => x.Name))}) VALUES";
+                m_CommandBuilder.Append(Command);
+            }
         }
 
         public void Insert(T instance)
@@ -76,8 +87,9 @@ namespace ShimmyMySherbet.MySQL.EF.Models
             }
         }
 
-        public void Commit()
+        public int Commit()
         {
+            int a;
             lock (m_CommandBuilder)
             {
                 m_CommandBuilder.Append(";");
@@ -94,15 +106,16 @@ namespace ShimmyMySherbet.MySQL.EF.Models
                             }
                         }
 
-                        command.ExecuteNonQuery();
+
+                        a =  command.ExecuteNonQuery();
                     }
                 }
-
-                m_CommandBuilder = new StringBuilder();
             }
+            Reset();
+            return a;
         }
 
-        public async Task CommitAsync()
+        public async Task<int> CommitAsync()
         {
             string cmdTxt;
             lock (m_CommandBuilder)
@@ -121,8 +134,8 @@ namespace ShimmyMySherbet.MySQL.EF.Models
                 {
                     command.Parameters.AddWithValue(p.Key, p.Value);
                 }
-
-                await command.ExecuteNonQueryAsync();
+                Reset();
+                return await command.ExecuteNonQueryAsync();
             }
         }
     }

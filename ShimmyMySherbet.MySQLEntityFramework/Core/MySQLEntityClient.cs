@@ -439,7 +439,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             {
                 lock (ActiveConnection)
                 {
-                    using (MySqlCommand Command = EntityCommandBuilder.BuildCommand(ActiveConnection, "DROP TABLE @0", Table))
+                    using (MySqlCommand Command = EntityCommandBuilder.BuildCommand(ActiveConnection, $"DROP TABLE `{Table.Replace("`", "``")}`"))
                     {
                         Command.ExecuteNonQuery();
                     }
@@ -450,7 +450,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                 using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
                 {
                     Connection.Open();
-                    using (MySqlCommand Command = EntityCommandBuilder.BuildCommand(Connection, "DROP TABLE @0", Table))
+                    using (MySqlCommand Command = EntityCommandBuilder.BuildCommand(Connection, $"DROP TABLE `{Table.Replace("`", "``")}`"))
                     {
                         Command.ExecuteNonQuery();
                     }

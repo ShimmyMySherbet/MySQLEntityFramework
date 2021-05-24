@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Security.Cryptography;
-using System.Text;
-using ShimmyMySherbet.MySQL.EF.Core;
+﻿using ShimmyMySherbet.MySQL.EF.Core;
 using ShimmyMySherbet.MySQL.EF.Models;
+using System;
+using System.Diagnostics;
 
 namespace ExampleApp
 {
@@ -20,6 +17,10 @@ namespace ExampleApp
 
             if (!Client.TableExists("Users"))
             {
+                Client.CreateTable<UserAccount>("Users");
+            } else
+            {
+                Client.DeleteTable("Users");
                 Client.CreateTable<UserAccount>("Users");
             }
 
@@ -52,21 +53,16 @@ namespace ExampleApp
             Stopwatch commit = new Stopwatch();
             commit.Start();
 
-            exe.Commit();
+            var c = exe.Commit();
 
             commit.Stop();
 
             var comitSpeed = Math.Round((max / (double)commit.ElapsedMilliseconds) * 1000, 2);
             Console.WriteLine($"Comitted {max} entries in {commit.ElapsedMilliseconds}ms @ {comitSpeed}p/s");
-
-
-
+            Console.WriteLine($"Rows Modified: {c}");
 
             Console.ReadLine();
-
-
         }
-
 
         public static void PrintUser(UserAccount User)
         {
@@ -77,7 +73,6 @@ namespace ExampleApp
             Console.WriteLine($"Email Address: {User.EmailAddress}");
             Console.WriteLine($"Date Created: {User.Created.ToLongDateString()} {User.Created.ToShortTimeString()}");
         }
-
     }
 
     public class UserAccount

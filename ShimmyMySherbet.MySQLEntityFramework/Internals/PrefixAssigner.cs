@@ -13,5 +13,13 @@
                 return m_PrefixLevel;
             }
         }
+
+        public void Reset()
+        {
+            lock(lockObj)
+            {
+                m_PrefixLevel = -1;
+            }
+        }
     }
 }
