@@ -24,9 +24,9 @@ namespace ExampleApp
                 Client.CreateTable<UserAccount>("Users");
             }
 
-            var max = 1000;
+            var max = 50000;
 
-            var exe = new BulkInserter<UserAccount>(mysqlConnection, "Users");
+            var exe = new TransactionalBulkInserter<UserAccount>(mysqlConnection, "Users");
 
             Console.WriteLine("Starting bulk insert build");
 

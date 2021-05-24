@@ -10,7 +10,13 @@ using System.Threading.Tasks;
 
 namespace ShimmyMySherbet.MySQL.EF.Models
 {
-    public class BulkInserter<T>
+    /// <summary>
+    /// Provides a way to quickly insert large amount of objects into a table.
+    /// For larger insert (e.g., 10K+, use TransactionalBulkInserter)
+    /// </summary>
+    /// <typeparam name="T">Database table class type</typeparam>
+    /// <seealso cref="TransactionalBulkInserter{T}"/>
+    public class BulkInserter<T> : IBulkInserter<T>
     {
         public string Table { get; private set; }
 
