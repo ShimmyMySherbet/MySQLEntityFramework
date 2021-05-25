@@ -10,6 +10,9 @@ namespace ShimmyMySherbet.MySQL.EF.Core
 {
     public class MySQLEntityClient : IDisposable
     {
+        /// <summary>
+        /// The active connection when SingleConnection is enabled
+        /// </summary>
         public MySqlConnection ActiveConnection { get; protected set; }
 
         public string ConnectionString;
@@ -37,6 +40,20 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             this.ConnectionString = ConnectionString;
             this.ReuseSingleConnection = singleConnectionMode;
             Reader.IndexedHelper = IndexedTypeHelper;
+        }
+
+        /// <summary>
+        /// If SingleConnection is enabled, returns the active connection. Otherwise returns a new connection.
+        /// </summary>
+        public MySqlConnection GetConnection()
+        {
+            if (ReuseSingleConnection)
+            {
+                return ActiveConnection;
+            } else
+            {
+                return new MySqlConnection(ConnectionString);
+            }
         }
 
         /// <summary>
@@ -77,6 +94,9 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         {
         }
 
+        /// <summary>
+        /// Gets the name of the connected database
+        /// </summary>
         public string Database
         {
             get
@@ -105,7 +125,10 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <returns>Connected</returns>
         public bool Connect()
         {
-            ActiveConnection = new MySqlConnection(ConnectionString);
+            if (ActiveConnection != null && ReuseSingleConnection)
+            {
+                ActiveConnection = new MySqlConnection(ConnectionString);
+            }
             return TryConnect(ActiveConnection);
         }
 
