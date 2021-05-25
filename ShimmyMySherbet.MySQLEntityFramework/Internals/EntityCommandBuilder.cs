@@ -130,6 +130,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             {
                 bool Include = true;
                 string Name = Field.Name;
+                bool omitUpdate = false;
                 foreach (Attribute Attrib in Attribute.GetCustomAttributes(Field))
                 {
                     if (Attrib is SQLOmit || Attrib is SQLIgnore)
@@ -141,6 +142,10 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     {
                         Name = ((SQLPropertyName)Attrib).Name;
                     }
+                    else if (Attrib is SQLOmitUpdate)
+                    {
+                        omitUpdate = true;
+                    }
                 }
                 if (Include)
                 {
@@ -148,7 +153,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     Metas.Add(new SQLMetaField(Name, Metas.Count, Field));
                 }
             }
-            string Command = $"INSERT INTO `{Table}` ({string.Join(", ", Metas.CastEnumeration(x => x.Name))}) VALUES ({string.Join(", ", Metas.CastEnumeration(x => $"@{x.Index}"))}) ON DUPLICATE KEY UPDATE {string.Join(", ", Metas.Select(x => $"`{x.Name}`=@{x.Index}"))};";
+            string Command = $"INSERT INTO `{Table}` ({string.Join(", ", Metas.CastEnumeration(x => x.Name))}) VALUES ({string.Join(", ", Metas.CastEnumeration(x => $"@{x.Index}"))}) ON DUPLICATE KEY UPDATE {string.Join(", ", Metas.Where(x => !x.OmitUpdate).Select(x => $"`{x.Name}`=@{x.Index}"))};";
             MySqlCommand sqlCommand = (Connection != null ? new MySqlCommand(Command, Connection) : new MySqlCommand(Command));
             foreach (SQLMetaField Meta in Metas)
                 sqlCommand.Parameters.AddWithValue($"@{Meta.Index}", Meta.Field.GetValue(Obj));
@@ -162,6 +167,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             {
                 bool Include = true;
                 string Name = Field.Name;
+                bool omitUpdate = false;
                 foreach (Attribute Attrib in Attribute.GetCustomAttributes(Field))
                 {
                     if (Attrib is SQLOmit || Attrib is SQLIgnore)
@@ -173,15 +179,18 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     {
                         Name = ((SQLPropertyName)Attrib).Name;
                     }
+                    else if (Attrib is SQLOmitUpdate)
+                    {
+                        omitUpdate = true;
+                    }
                 }
                 if (Include)
                 {
                     if (Metas.Where(x => string.Equals(x.Name, Name, StringComparison.InvariantCultureIgnoreCase)).Count() != 0) continue;
-                    Metas.Add(new SQLMetaField(Name, Metas.Count, Field));
+                    Metas.Add(new SQLMetaField(Name, Metas.Count, Field, omitUpdate));
                 }
             }
-            string Command = $"INSERT INTO `{Table}` ({string.Join(", ", Metas.CastEnumeration(x => x.Name))}) VALUES ({string.Join(", ", Metas.CastEnumeration(x => $"@{prefix}_{x.Index}"))}) ON DUPLICATE KEY UPDATE {string.Join(", ", Metas.Select(x => $"`{x.Name}`=@{prefix}_{x.Index}"))};";
-
+            string Command = $"INSERT INTO `{Table}` ({string.Join(", ", Metas.CastEnumeration(x => x.Name))}) VALUES ({string.Join(", ", Metas.CastEnumeration(x => $"@{x.Index}"))}) ON DUPLICATE KEY UPDATE {string.Join(", ", Metas.Where(x => !x.OmitUpdate).Select(x => $"`{x.Name}`=@{x.Index}"))};";
             properties = new PropertyList();
             foreach (SQLMetaField Meta in Metas)
                 properties.Add($"@{prefix}_{Meta.Index}", Meta.Field.GetValue(Obj));
@@ -197,7 +206,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                 bool Include = true;
                 string Name = Field.Name;
                 bool Primary = false;
-
+                bool omitUpdate = false;
                 bool isPrimary = Attribute.IsDefined(Field, typeof(SQLPrimaryKey));
                 foreach (Attribute Attrib in Attribute.GetCustomAttributes(Field))
                 {
@@ -213,11 +222,14 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     else if (Attrib is SQLPrimaryKey)
                     {
                         Primary = true;
+                    } else if (Attrib is SQLOmitUpdate)
+                    {
+                        omitUpdate = true;
                     }
                 }
                 if (Include)
                 {
-                    SQLMetaField Meta = new SQLMetaField(Name, Metas.Count, Field);
+                    SQLMetaField Meta = new SQLMetaField(Name, Metas.Count, Field, omitUpdate);
                     if (Primary)
                     {
                         PrimaryKey = Meta;
@@ -234,6 +246,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     }
                 }
             }
+            Metas.RemoveAll(x => x.OmitUpdate);
             if (PrimaryKey == null) throw new NoPrimaryKeyException();
             string Command = $"UPDATE `{Table}` SET {string.Join(", ", Metas.CastEnumeration(x => $"{x.Name}=@{x.Index}"))} WHERE {PrimaryKey.Name}=@KEY;";
             MySqlCommand sqlCommand = (Connection != null ? new MySqlCommand(Command, Connection) : new MySqlCommand(Command));
@@ -252,7 +265,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                 bool Include = true;
                 string Name = Field.Name;
                 bool Primary = false;
-
+                bool omitUpdate = false;
                 bool isPrimary = Attribute.IsDefined(Field, typeof(SQLPrimaryKey));
                 foreach (Attribute Attrib in Attribute.GetCustomAttributes(Field))
                 {
@@ -269,10 +282,14 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     {
                         Primary = true;
                     }
+                    else if (Attrib is SQLOmitUpdate)
+                    {
+                        omitUpdate = true;
+                    }
                 }
                 if (Include)
                 {
-                    SQLMetaField Meta = new SQLMetaField(Name, Metas.Count, Field);
+                    SQLMetaField Meta = new SQLMetaField(Name, Metas.Count, Field, omitUpdate);
                     if (Primary)
                     {
                         PrimaryKey = Meta;
@@ -289,9 +306,9 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     }
                 }
             }
+            Metas.RemoveAll(x => x.OmitUpdate);
             if (PrimaryKey == null) throw new NoPrimaryKeyException();
-
-            string Command = $"UPDATE `{Table}` SET {string.Join(", ", Metas.CastEnumeration(x => $"{x.Name}=@{prefix}_{x.Index}"))} WHERE {PrimaryKey.Name}=@{prefix}KEY;";
+            string Command = $"UPDATE `{Table}` SET {string.Join(", ", Metas.CastEnumeration(x => $"{x.Name}=@{x.Index}"))} WHERE {PrimaryKey.Name}=@KEY;";
             properties = new PropertyList();
             properties.Add($"@{prefix}KEY", PrimaryKey.Field.GetValue(Obj));
 

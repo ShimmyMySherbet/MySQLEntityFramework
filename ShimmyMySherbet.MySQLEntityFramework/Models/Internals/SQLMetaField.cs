@@ -12,11 +12,13 @@ namespace ShimmyMySherbet.MySQL.EF.Models.Internals
         public string Name;
         public int Index;
         public FieldInfo Field;
-        public SQLMetaField(string Name = null, int Index = 0, FieldInfo Field = null)
+        public bool OmitUpdate = false;
+        public SQLMetaField(string Name = null, int Index = 0, FieldInfo Field = null, bool omitupdate = false)
         {
             this.Name = Name;
             this.Index = Index;
             this.Field = Field;
+            OmitUpdate = omitupdate;
         }
     }
 }
