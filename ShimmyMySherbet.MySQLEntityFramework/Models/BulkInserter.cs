@@ -60,6 +60,9 @@ namespace ShimmyMySherbet.MySQL.EF.Models
             Reset();
         }
 
+        /// <summary>
+        /// Discard all queued inserts and resets the inserter.
+        /// </summary>
         public void Reset()
         {
             m_Assigner.Reset();
@@ -72,6 +75,9 @@ namespace ShimmyMySherbet.MySQL.EF.Models
             }
         }
 
+        /// <summary>
+        /// Adds an object to the insert list
+        /// </summary>
         public void Insert(T instance)
         {
             int prefix = m_Assigner.AssignPrefix();
@@ -93,6 +99,10 @@ namespace ShimmyMySherbet.MySQL.EF.Models
             }
         }
 
+        /// <summary>
+        /// Writes all inserts to the database
+        /// </summary>
+        /// <returns>Rows modified</returns>
         public int Commit()
         {
             int a;
@@ -120,7 +130,10 @@ namespace ShimmyMySherbet.MySQL.EF.Models
             Reset();
             return a;
         }
-
+        /// <summary>
+        /// Writes all inserts to the database
+        /// </summary>
+        /// <returns>Rows modified</returns>
         public async Task<int> CommitAsync()
         {
             string cmdTxt;

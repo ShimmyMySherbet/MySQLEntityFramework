@@ -7,6 +7,14 @@ using System.Threading.Tasks;
 
 namespace ShimmyMySherbet.MySQL.EF.Core
 {
+    /// <summary>
+    /// Used to create database Managers/Brides
+    /// To use, inherit this class, and add fields/properties of DatabaseTable<T>, or any class that inherits IDatabaseTable
+    /// This class will supply each instance with a datasdatabase connection.
+    /// Connect() will open the databse connection and CheckSchema() will create any missing database tables
+    /// TIP: To provide table specific operations, in another class inherit DatabaseTable<T> and include it in your database manager
+    /// </summary>
+    /// <seealso cref="DatabaseTable{T}"/>
     public abstract class DatabaseClient
     {
         public MySQLEntityClient Client { get; private set; }

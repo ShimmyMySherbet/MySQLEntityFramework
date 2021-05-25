@@ -27,6 +27,9 @@ namespace ShimmyMySherbet.MySQL.EF.Models
             m_max = maxInsertsPerTransaction;
         }
 
+        /// <summary>
+        /// Adds an object to the insert list
+        /// </summary>
         public void Insert(T instance)
         {
             if (m_cnew)
@@ -48,6 +51,10 @@ namespace ShimmyMySherbet.MySQL.EF.Models
             }
         }
 
+        /// <summary>
+        /// Writes all inserts to the database
+        /// </summary>
+        /// <returns>Rows modified</returns>
         public int Commit()
         {
             int c = 0;
@@ -67,6 +74,10 @@ namespace ShimmyMySherbet.MySQL.EF.Models
             return c;
         }
 
+        /// <summary>
+        /// Writes all inserts to the database
+        /// </summary>
+        /// <returns>Rows modified</returns>
         public async Task<int> CommitAsync()
         {
             int c = 0;

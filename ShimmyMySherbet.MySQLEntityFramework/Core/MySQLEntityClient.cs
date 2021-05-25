@@ -15,7 +15,11 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// </summary>
         public MySqlConnection ActiveConnection { get; protected set; }
 
-        public string ConnectionString;
+        /// <summary>
+        /// The connection string used when SingleConnection is disabled.
+        /// </summary>
+        public string ConnectionString { get; set; }
+
         protected bool AutoDispose = true;
 
         /// <summary>
@@ -45,14 +49,18 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <summary>
         /// If SingleConnection is enabled, returns the active connection. Otherwise returns a new connection.
         /// </summary>
-        public MySqlConnection GetConnection()
+        public MySqlConnection GetConnection(bool autoOpen = true)
         {
             if (ReuseSingleConnection)
             {
                 return ActiveConnection;
-            } else
+            }
+            else
             {
-                return new MySqlConnection(ConnectionString);
+                var c = new MySqlConnection(ConnectionString);
+                if (autoOpen)
+                    c.Open();
+                return c;
             }
         }
 
@@ -220,7 +228,6 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                 await connection.CloseAsync();
             }
         }
-
 
         /// <summary>
         /// Creates the object in the database table.
