@@ -86,6 +86,12 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         }
 
         /// <summary>
+        /// Creates the database table if it doesn't exist.
+        /// NOTE: CheckSchema() also does this, and if you are using a database manager using a <seealso cref="DatabaseClient"/> call CheckSchema on that instead.
+        /// </summary>
+        public void CreateTableIfNotExists() => Client.CreateTableIfNotExists<T>(TableName);
+
+        /// <summary>
         /// Deletes the specified instance from the table.
         /// Requires the type to have at least one <seealso cref="SQLPrimaryKey"/>
         /// </summary>

@@ -8,7 +8,7 @@
     <RepositoryUrl>https://github.com/ShimmyMySherbet/MySQLEntityFramework</RepositoryUrl>
     <PackageTags>MySQL Wrapper EntityFramework</PackageTags>
     <NeutralLanguage>en</NeutralLanguage>
-    <PackageReleaseNotes>Fixed a few SQL Types signed flags</PackageReleaseNotes>
+    <PackageReleaseNotes>Added DatabaseClient and DatabaseTable&lt;T&gt;</PackageReleaseNotes>
     <Version>1.5.0</Version>
     <PackageProjectUrl>https://github.com/ShimmyMySherbet/MySQLEntityFramework</PackageProjectUrl>
   </PropertyGroup>

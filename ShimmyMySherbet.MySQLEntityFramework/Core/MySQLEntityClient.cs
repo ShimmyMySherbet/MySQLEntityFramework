@@ -395,6 +395,25 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
         }
 
+
+
+        public void CreateTableIfNotExists<T>(string tableName)
+        {
+            if (!TableExists(tableName))
+            {
+                CreateTable<T>(tableName);
+            }
+        }
+
+
+        public async Task CreateTableIfNotExistsAsync<T>(string tableName)
+        {
+            if (!TableExists(tableName))
+            {
+              await  CreateTableAsync<T>(tableName);
+            }
+        }
+
         /// <summary>
         /// Updates an object in the specified database table. Object Model must have an associated Primary Key.
         /// </summary>
