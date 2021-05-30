@@ -132,11 +132,18 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <returns>Connected</returns>
         public bool Connect()
         {
-            if (ActiveConnection != null && ReuseSingleConnection)
+            if (ReuseSingleConnection)
             {
                 ActiveConnection = new MySqlConnection(ConnectionString);
+                return TryConnect(ActiveConnection);
             }
-            return TryConnect(ActiveConnection);
+            else
+            {
+                using (var conn = GetConnection(autoOpen: false))
+                {
+                    return TryConnect(conn);
+                }
+            }
         }
 
         /// <summary>
@@ -154,8 +161,18 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <returns>Connected</returns>
         public async Task<bool> ConnectAsync()
         {
-            ActiveConnection = new MySqlConnection(ConnectionString);
-            return await TryConnectAsync(ActiveConnection);
+            if (ReuseSingleConnection)
+            {
+                ActiveConnection = new MySqlConnection(ConnectionString);
+                return await TryConnectAsync(ActiveConnection);
+            } else
+            {
+                using(var conn = GetConnection(autoOpen: false))
+                {
+                    return await TryConnectAsync(conn);
+                }
+            }
+            
         }
 
         /// <summary>
@@ -393,8 +410,6 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
         }
 
-
-
         public void CreateTableIfNotExists<T>(string tableName)
         {
             if (!TableExists(tableName))
@@ -403,12 +418,11 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
         }
 
-
         public async Task CreateTableIfNotExistsAsync<T>(string tableName)
         {
             if (!TableExists(tableName))
             {
-              await  CreateTableAsync<T>(tableName);
+                await CreateTableAsync<T>(tableName);
             }
         }
 
