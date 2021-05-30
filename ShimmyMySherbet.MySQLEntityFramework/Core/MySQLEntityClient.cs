@@ -49,9 +49,9 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <summary>
         /// If SingleConnection is enabled, returns the active connection. Otherwise returns a new connection.
         /// </summary>
-        public MySqlConnection GetConnection(bool autoOpen = true)
+        public MySqlConnection GetConnection(bool autoOpen = true, bool forceNew = false)
         {
-            if (ReuseSingleConnection)
+            if (ReuseSingleConnection && !forceNew)
             {
                 return ActiveConnection;
             }
@@ -118,9 +118,8 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                 }
                 else
                 {
-                    using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+                    using (MySqlConnection Connection = GetConnection())
                     {
-                        Connection.Open();
                         return Connection.Database;
                     }
                 }
@@ -200,7 +199,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
             else
             {
-                using (MySqlConnection connection = new MySqlConnection(ConnectionString))
+                using (MySqlConnection connection = GetConnection())
                 {
                     connection.Open();
                     using (MySqlCommand Command = EntityCommandBuilder.BuildInsertCommand<T>(Obj, Table, connection))
@@ -218,7 +217,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <param name="Table">The table to create the object in</param>
         public async Task InsertAsync<T>(T Obj, string Table)
         {
-            using (MySqlConnection connection = new MySqlConnection(ConnectionString))
+            using (MySqlConnection connection = GetConnection(autoOpen: false, forceNew: true))
             {
                 await connection.OpenAsync();
                 using (MySqlCommand Command = EntityCommandBuilder.BuildInsertCommand<T>(Obj, Table, connection))
@@ -268,7 +267,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <param name="Table">The table to create the object in</param>
         public async Task InsertUpdateAsync<T>(T Obj, string Table)
         {
-            using (MySqlConnection connection = new MySqlConnection(ConnectionString))
+            using (MySqlConnection connection = GetConnection(autoOpen: false, forceNew: true))
             {
                 await connection.OpenAsync();
                 using (MySqlCommand Command = EntityCommandBuilder.BuildInsertUpdateCommand<T>(Obj, Table, connection))
@@ -341,7 +340,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// </summary>
         public async Task DeleteAsync<T>(T Obj, string Table)
         {
-            using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+            using (MySqlConnection Connection = GetConnection(autoOpen: false, forceNew: true))
             {
                 Connection.Open();
                 using (MySqlCommand Command = EntityCommandBuilder.BuildDeleteCommand<T>(Obj, Table, Connection))
@@ -369,9 +368,8 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
             else
             {
-                using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+                using (MySqlConnection Connection = GetConnection(autoOpen: true, forceNew: true))
                 {
-                    Connection.Open();
                     using (MySqlCommand Command = CommandBuilder.BuildCreateTableCommand<T>(TableName, Connection))
                     {
                         Command.ExecuteNonQuery();
@@ -385,9 +383,9 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// </summary>
         public async Task CreateTableAsync<T>(string TableName)
         {
-            using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+            using (MySqlConnection Connection = GetConnection(autoOpen: false, forceNew: true))
             {
-                Connection.Open();
+                await Connection.OpenAsync();
                 using (MySqlCommand Command = CommandBuilder.BuildCreateTableCommand<T>(TableName, Connection))
                 {
                     await Command.ExecuteNonQueryAsync();
@@ -431,9 +429,8 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
             else
             {
-                using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+                using (MySqlConnection Connection = GetConnection(autoOpen: true, forceNew: true))
                 {
-                    Connection.Open();
                     using (MySqlCommand Command = EntityCommandBuilder.BuildUpdateCommand<T>(Obj, Table, Connection))
                     {
                         Command.ExecuteNonQuery();
@@ -447,14 +444,13 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// </summary>
         public async Task UpdateAsync<T>(T Obj, string Table)
         {
-            using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+            using (MySqlConnection Connection = GetConnection(autoOpen: false, forceNew: true))
             {
-                Connection.Open();
+                await Connection.OpenAsync();
                 using (MySqlCommand Command = EntityCommandBuilder.BuildUpdateCommand<T>(Obj, Table, Connection))
                 {
                     await Command.ExecuteNonQueryAsync();
                 }
-                Connection.Close();
             }
         }
 
@@ -479,9 +475,8 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
             else
             {
-                using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+                using (MySqlConnection Connection = GetConnection(autoOpen: true, forceNew: true))
                 {
-                    Connection.Open();
                     using (MySqlCommand Command = EntityCommandBuilder.BuildCommand(Connection,
                         "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = @0 AND TABLE_NAME = @1;", Database, Table))
                     using (MySqlDataReader Reader = Command.ExecuteReader())
@@ -506,9 +501,8 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
             else
             {
-                using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+                using (MySqlConnection Connection = GetConnection(autoOpen: true, forceNew: true))
                 {
-                    Connection.Open();
                     using (MySqlCommand Command = EntityCommandBuilder.BuildCommand(Connection, $"DROP TABLE `{Table.Replace("`", "``")}`"))
                     {
                         Command.ExecuteNonQuery();
@@ -519,7 +513,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
 
         public async Task DeleteTableAsync(string Table)
         {
-            using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+            using (MySqlConnection Connection = GetConnection(autoOpen: false, forceNew: true))
             {
                 await Connection.OpenAsync();
                 using (MySqlCommand Command = EntityCommandBuilder.BuildCommand(Connection, "DROP TABLE @0", Table))
@@ -546,7 +540,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
 
         private async Task<bool> TryConnectAsync(MySqlConnection connection)
         {
-            if (connection.State == System.Data.ConnectionState.Open) return true;
+            if (connection.State == System.Data.ConnectionState.Open || ActiveConnection == null) return true;
             try
             {
                 await connection.OpenAsync();
@@ -576,9 +570,8 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
             else
             {
-                using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+                using (MySqlConnection Connection = GetConnection(autoOpen: true, forceNew: true))
                 {
-                    Connection.Open();
                     return Reader.RetriveFromDatabase<T>(Connection, Command, Parameters);
                 }
             }
@@ -593,7 +586,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <returns>Results from query</returns>
         public async Task<List<T>> QueryAsync<T>(string Command, params object[] Parameters)
         {
-            using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+            using (MySqlConnection Connection = GetConnection(autoOpen: false, forceNew: true))
             {
                 await Connection.OpenAsync();
                 var value = await Reader.RetriveFromDatabaseAsync<T>(Connection, Command, Parameters);
@@ -627,9 +620,8 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
             else
             {
-                using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+                using (MySqlConnection Connection = GetConnection(autoOpen: true, forceNew: true))
                 {
-                    Connection.Open();
                     List<T> Results = Reader.RetriveFromDatabaseCapped<T>(Connection, 1, Command, Parameters);
                     if (Results.Count != 0)
                     {
@@ -651,7 +643,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <returns>First result, or null if no results.</returns>
         public async Task<T> QuerySingleAsync<T>(string Command, params object[] Parameters)
         {
-            using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+            using (MySqlConnection Connection = GetConnection(autoOpen: false, forceNew: true))
             {
                 await Connection.OpenAsync();
                 List<T> Results = await Reader.RetriveFromDatabaseCappedAsync<T>(Connection, 1, Command, Parameters);
@@ -680,9 +672,8 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
             else
             {
-                using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+                using (MySqlConnection Connection = GetConnection(autoOpen: true, forceNew: true))
                 {
-                    Connection.Open();
                     using (MySqlCommand command = EntityCommandBuilder.BuildCommand(Connection, Command, Parameters))
                     {
                         return command.ExecuteNonQuery();
@@ -693,7 +684,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
 
         public async Task<int> ExecuteNonQueryAsync(string Command, params object[] Parameters)
         {
-            using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
+            using (MySqlConnection Connection = GetConnection(autoOpen: false, forceNew: true))
             {
                 await Connection.OpenAsync();
                 using (MySqlCommand command = EntityCommandBuilder.BuildCommand(Connection, Command, Parameters))
