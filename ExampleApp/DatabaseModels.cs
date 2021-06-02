@@ -18,7 +18,7 @@ namespace ExampleApp
 
         public string EmailAddress;
 
-        public DateTime Created;
+        public DateTime? Created;
     }
 
     public class UserPost

@@ -456,7 +456,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             List<object> defaults = new List<object>();
             foreach (SQLBuildField field in fields)
             {
-                bodyParams.Add($"    `{field.Name}` {field.Type.SQLRepresentation} {(field.Null ? "NULL" : "NOT NULL")}{(field.Default != null ? $" DEFAULT @DEF{defaults.Count}" : "")}{(field.AutoIncrement ? " AUTO_INCREMENT" : "")}");
+                bodyParams.Add($"    `{field.Name}` {field.SQLRepresentation} {(field.Null ? "NULL" : "NOT NULL")}{(field.Default != null ? $" DEFAULT @DEF{defaults.Count}" : "")}{(field.AutoIncrement ? " AUTO_INCREMENT" : "")}");
 
                 if (field.Default != null) defaults.Add(field.Default);
                 if (field.PrimaryKey)

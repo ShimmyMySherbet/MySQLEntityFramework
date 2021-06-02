@@ -1,15 +1,14 @@
-﻿using System;
+﻿using MySql.Data.MySqlClient;
+using ShimmyMySherbet.MySQL.EF.Models;
+using ShimmyMySherbet.MySQL.EF.Models.Exceptions;
+using ShimmyMySherbet.MySQL.EF.Models.Internals;
+using ShimmyMySherbet.MySQL.EF.Models.TypeModel;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Reflection;
 using System.Threading.Tasks;
-using System.Xml;
-using MySql.Data.MySqlClient;
-using ShimmyMySherbet.MySQL.EF.Models;
-using ShimmyMySherbet.MySQL.EF.Models.Exceptions;
-using ShimmyMySherbet.MySQL.EF.Models.Internals;
-using ShimmyMySherbet.MySQL.EF.Models.TypeModel;
 
 namespace ShimmyMySherbet.MySQL.EF.Internals
 {
@@ -73,14 +72,19 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
             while (Reader.Read())
             {
+                var value = Reader.GetValue(CompatableColumn);
                 count++;
-                if (CastRequired)
+                if (value is DBNull)
                 {
-                    Entries.Add((T)Convert.ChangeType(Reader.GetValue(CompatableColumn), typeof(T)));
+                    Entries.Add(default(T));
+                }
+                else if (CastRequired)
+                {
+                    Entries.Add((T)Convert.ChangeType(value, typeof(T)));
                 }
                 else
                 {
-                    Entries.Add((T)Reader.GetValue(CompatableColumn));
+                    Entries.Add((T)value);
                 }
                 if (checkLimit && count >= limit) break;
             }
@@ -161,7 +165,16 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     if (BaseFields.ContainsKey(Referance.Name))
                     {
                         FieldInfo field = BaseFields[Referance.Name];
-                        field.SetValue(NewObject, Reader.GetValue(Referance.Index));
+
+                        var obj = Reader.GetValue(Referance.Index);
+                        if (obj is DBNull)
+                        {
+                            field.SetValue(NewObject, GetDefault(field.FieldType));
+                        }
+                        else
+                        {
+                            field.SetValue(NewObject, obj);
+                        }
                     }
                 }
                 Result.Add(NewObject);
@@ -170,7 +183,14 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             return Result;
         }
 
-
+        private static object GetDefault(Type type)
+        {
+            if (type.IsValueType)
+            {
+                return Activator.CreateInstance(type);
+            }
+            return null;
+        }
 
         public async Task<List<T>> ReadClassesAsync<T>(DbDataReader Reader, int limit = -1)
         {
@@ -215,7 +235,15 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     if (BaseFields.ContainsKey(Referance.Name))
                     {
                         FieldInfo field = BaseFields[Referance.Name];
-                        field.SetValue(NewObject, Reader.GetValue(Referance.Index));
+                        var obj = Reader.GetValue(Referance.Index);
+                        if (obj is DBNull)
+                        {
+                            field.SetValue(NewObject, GetDefault(field.FieldType));
+                        }
+                        else
+                        {
+                            field.SetValue(NewObject, obj);
+                        }
                     }
                 }
                 Result.Add(NewObject);

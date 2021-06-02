@@ -1,14 +1,10 @@
-﻿using ShimmyMySherbet.MySQL.EF.Core;
-using ShimmyMySherbet.MySQL.EF.Models;
+﻿using ShimmyMySherbet.MySQL.EF.Models;
 using System;
-using System.Diagnostics;
 
 namespace ExampleApp
 {
     public class Program
     {
-
-
         private static void Main(string[] args)
         {
             var settings = new DatabaseSettings("127.0.0.1", "TestDatabase", "kn8hSzrg2OVhTWHN", "test");
@@ -17,29 +13,13 @@ namespace ExampleApp
             Console.WriteLine($"Connected: {db.Connect()}");
             db.CheckSchema();
 
-         
-            var user = db.Accounts.QuerySingle("SELECT * FROM @TABLE WHERE Username=@0;", "user_10");
-            PrintUser(user);
+            var users = db.Accounts.Query("SELECT * FROM @TABLE", "user_10");
 
-
-
-
-            UserPost post = new UserPost()
+            foreach(var u in users)
             {
-                UserID = user.ID,
-                Title = "Sqid is gei",
-                Content = "He really is",
-                Posted = DateTime.Now
-            };
-
-
-            db.Posts.Insert(post);
-
-
-            foreach(var p in db.Posts.GetPosts(user))
-            {
-                Console.WriteLine($"{p.Title} > {p.Content}");
+                PrintUser(u);
             }
+
 
             Console.ReadLine();
         }
@@ -51,7 +31,9 @@ namespace ExampleApp
             Console.WriteLine($"Hash Data: {string.Join(", ", User.HashData)}");
             Console.WriteLine($"SteamID: {User.SteamID}");
             Console.WriteLine($"Email Address: {User.EmailAddress}");
-            Console.WriteLine($"Date Created: {User.Created.ToLongDateString()} {User.Created.ToShortTimeString()}");
+            if (User.Created.HasValue)
+                Console.WriteLine($"Date Created: {User.Created.Value.ToLongDateString()} {User.Created.Value.ToShortTimeString()}");
+            else Console.WriteLine("Date Created: NULL");
             Console.WriteLine();
         }
     }
