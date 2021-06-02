@@ -9,7 +9,7 @@
     <PackageTags>MySQL Wrapper EntityFramework</PackageTags>
     <NeutralLanguage>en</NeutralLanguage>
     <PackageReleaseNotes>Added DatabaseClient and DatabaseTable&lt;T&gt;</PackageReleaseNotes>
-    <Version>1.5.2</Version>
+    <Version>1.5.5</Version>
     <PackageProjectUrl>https://github.com/ShimmyMySherbet/MySQLEntityFramework</PackageProjectUrl>
   </PropertyGroup>
 
