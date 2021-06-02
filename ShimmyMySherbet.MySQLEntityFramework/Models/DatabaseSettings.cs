@@ -45,6 +45,8 @@
             return base.GetHashCode();
         }
 
+        public static DatabaseSettings Parse(string connectionString) => ConnectionStringParser.Parse(connectionString);
+
         public override string ToString()
         {
             return $"{(DatabaseAddress != null ? $"Server={DatabaseAddress};" : "")}{(DatabaseName != null ? $"Database={DatabaseName};" : "")}{(DatabaseUsername != null ? $"User Id={DatabaseUsername};" : "")}{(DatabasePassword != null ? $"Password={DatabasePassword};" : "")}{(DatabasePort != 3306 ? $"Port={DatabasePort};" : "")}";
