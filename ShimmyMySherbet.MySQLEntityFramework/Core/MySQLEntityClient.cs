@@ -233,7 +233,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
             finally
             {
-                ConnectionProvider.ReleaseConnection(connection);
+                await ConnectionProvider.ReleaseConnectionAsync(connection);
             }
         }
 
@@ -280,7 +280,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
             finally
             {
-                ConnectionProvider.ReleaseConnection(connection);
+                await ConnectionProvider.ReleaseConnectionAsync(connection);
             }
         }
 
@@ -332,7 +332,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
             finally
             {
-                ConnectionProvider.ReleaseConnection(connection);
+                await ConnectionProvider.ReleaseConnectionAsync(connection);
             }
         }
 
@@ -373,7 +373,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
             finally
             {
-                ConnectionProvider.ReleaseConnection(connection);
+                await ConnectionProvider.ReleaseConnectionAsync(connection);
             }
         }
 
@@ -430,7 +430,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
             finally
             {
-                ConnectionProvider.ReleaseConnection(connection);
+                await ConnectionProvider.ReleaseConnectionAsync(connection);
             }
         }
 
@@ -491,7 +491,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
             finally
             {
-                ConnectionProvider.ReleaseConnection(connection);
+                await ConnectionProvider.ReleaseConnectionAsync(connection);
             }
         }
 
@@ -546,7 +546,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
             finally
             {
-                ConnectionProvider.ReleaseConnection(connection);
+                await ConnectionProvider.ReleaseConnectionAsync(connection);
             }
         }
 
@@ -603,7 +603,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
             finally
             {
-                ConnectionProvider.ReleaseConnection(connection);
+                await ConnectionProvider.ReleaseConnectionAsync(connection);
             }
         }
 
@@ -638,7 +638,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             }
             finally
             {
-                ConnectionProvider.ReleaseConnection(connection);
+                await ConnectionProvider.ReleaseConnectionAsync(connection);
             }
         }
 
