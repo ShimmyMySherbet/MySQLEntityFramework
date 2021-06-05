@@ -138,19 +138,19 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// Only required for when ReuseSingleConnection is enabled.
         /// </summary>
         /// <returns>Connected</returns>
-        public bool Connect() => Connect(out EConnectionFailiureReason _);
+        public bool Connect() => Connect(out string _);
 
-        public bool Connect(out EConnectionFailiureReason failiureReason)
+        public bool Connect(out string errorMessage)
         {
             try
             {
                 ConnectionProvider.Open();
-                failiureReason = EConnectionFailiureReason.SUCCESS;
+                errorMessage = "Connected.";
                 return true;
             }
             catch (MySqlException ex)
             {
-                failiureReason = (EConnectionFailiureReason)ex.ErrorCode;
+                errorMessage = ex.Message;
                 return false;
             }
         }
@@ -175,9 +175,9 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <summary>
         /// Only required for when ReuseSingleConnection is enabled.
         /// </summary>
-        public MySQLEntityClient Connect(out bool connected, out EConnectionFailiureReason failiureReason)
+        public MySQLEntityClient Connect(out bool connected, out string errorMessage)
         {
-            connected = Connect(out failiureReason);
+            connected = Connect(out errorMessage);
             return this;
         }
 

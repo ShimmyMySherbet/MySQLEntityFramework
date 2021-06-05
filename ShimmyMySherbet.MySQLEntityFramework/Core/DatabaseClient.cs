@@ -117,6 +117,11 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             return Client.Connect();
         }
 
+        public bool Connect(out string errorMessage)
+        {
+            return Client.Connect(out errorMessage);
+        }
+
         public async Task<bool> ConnectAsync()
         {
             return await Client.ConnectAsync();

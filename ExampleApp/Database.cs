@@ -1,5 +1,6 @@
 ﻿using ShimmyMySherbet.MySQL.EF.Core;
 using ShimmyMySherbet.MySQL.EF.Models;
+using ShimmyMySherbet.MySQL.EF.Models.Interfaces;
 
 namespace ExampleApp
 {
@@ -9,6 +10,10 @@ namespace ExampleApp
         public PostsDatabaseTable Posts { get; } = new PostsDatabaseTable("Posts");
 
         public Database(DatabaseSettings settings) : base(settings)
+        {
+        }
+
+        public Database(IConnectionProvider provider) : base(provider)
         {
         }
     }

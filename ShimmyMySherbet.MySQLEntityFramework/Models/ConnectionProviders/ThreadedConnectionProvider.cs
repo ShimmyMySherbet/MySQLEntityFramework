@@ -36,11 +36,30 @@ namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
 
         public void Disconnect()
         {
+            lock (m_Connections)
+            {
+                if (m_Connections.ContainsKey(m_ThreadID))
+                {
+                    m_Connections[m_ThreadID].Close();
+                }
+            }
         }
 
-        public Task DisconnectAsync()
+        public async Task DisconnectAsync()
         {
-            return Task.CompletedTask;
+            MySqlConnection conn;
+            lock (m_Connections)
+            {
+                if (m_Connections.ContainsKey(m_ThreadID))
+                {
+                    conn = m_Connections[m_ThreadID];
+                }
+                else
+                {
+                    return;
+                }
+            }
+            await conn.CloseAsync();
         }
 
         public void Dispose()
@@ -78,9 +97,30 @@ namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
             return conn;
         }
 
-        public Task<MySqlConnection> GetConnectionAsync(bool autoOpen = true, bool forceNew = false)
+        public async Task<MySqlConnection> GetConnectionAsync(bool autoOpen = true, bool forceNew = false)
         {
-            return Task.FromResult(GetConnection(autoOpen, forceNew));
+            if (!forceNew)
+            {
+                lock (m_Connections)
+                {
+                    if (m_Connections.ContainsKey(m_ThreadID))
+                    {
+                        return m_Connections[m_ThreadID];
+                    }
+                }
+            }
+
+            var conn = new MySqlConnection(m_ConnectionString);
+            if (autoOpen)
+            {
+                await conn.OpenAsync();
+            }
+
+            lock (m_Connections)
+            {
+                m_Connections[m_ThreadID] = conn;
+            }
+            return conn;
         }
 
         public void Open()
