@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
 {
+    /// <summary>
+    /// Maintains a connection for each thread that calls for one
+    /// </summary>
     public class ThreadedConnectionProvider : IConnectionProvider
     {
         private string m_ConnectionString;

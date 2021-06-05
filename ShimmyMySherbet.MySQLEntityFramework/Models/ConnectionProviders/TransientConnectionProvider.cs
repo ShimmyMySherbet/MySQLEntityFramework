@@ -4,6 +4,9 @@ using System.Threading.Tasks;
 
 namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
 {
+    /// <summary>
+    /// Creates a new connection each time one is requested using the thread pool
+    /// </summary>
     public class TransientConnectionProvider : IConnectionProvider
     {
         private string m_ConnectionString { get; set; }

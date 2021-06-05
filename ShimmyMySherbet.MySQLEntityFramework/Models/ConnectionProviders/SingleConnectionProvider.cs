@@ -4,6 +4,9 @@ using System.Threading.Tasks;
 
 namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
 {
+    /// <summary>
+    /// Maintains a single database connection
+    /// </summary>
     public class SingleConnectionProvider : IConnectionProvider
     {
         private string m_ConnectionString;
