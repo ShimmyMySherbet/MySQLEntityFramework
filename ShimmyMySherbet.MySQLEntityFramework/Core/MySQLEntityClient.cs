@@ -26,13 +26,6 @@ namespace ShimmyMySherbet.MySQL.EF.Core
 
         protected bool AutoDispose = true;
 
-        /// <summary>
-        /// Declares if a single connection should be used. If this is enabled, all actions will utilise a single connection. If the connection is in use, the methods will block untill it is available.
-        /// Enable this if you are just using this client on a single thread.
-        /// This parameter is set when creating an instance of MySQLEntityClient
-        /// </summary>
-        //public bool ReuseSingleConnection { get; private set; }
-
         protected EntityCommandBuilder CommandBuilder = new EntityCommandBuilder();
         protected MySQLEntityReader Reader = new MySQLEntityReader();
         protected SQLTypeHelper IndexedTypeHelper = new SQLTypeHelper();
@@ -59,12 +52,12 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         }
 
         /// <summary>
-        /// If SingleConnection is enabled, returns the active connection. Otherwise returns a new connection.
+        /// Legacy proxy method for <seealso cref="ConnectionProvider"/>.GetConnection
         /// </summary>
-        //public MySqlConnection GetConnection(bool autoOpen = true, bool forceNew = false)
-        //{
-        //    return ConnectionProvider.GetConnection(autoOpen: autoOpen, forceNew: forceNew);
-        //}
+        public MySqlConnection GetConnection(bool autoOpen = true, bool forceNew = false)
+        {
+            return ConnectionProvider.GetConnection(autoOpen: autoOpen, forceNew: forceNew);
+        }
 
         /// <summary>
         /// Initializes a new instance of MySQLEntityClient in ReuseConnection mode.
@@ -107,7 +100,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// Initializes a new connection using the details provided in DatabaseSettings
         /// </summary>
         /// <param name="settings">Database connectio nsettings</param>
-        public MySQLEntityClient(DatabaseSettings settings, bool singleConnectionMode = true) : this(settings.DatabaseAddress, settings.DatabaseUsername, settings.DatabasePassword, settings.DatabaseName, settings.DatabasePort, singleConnectionMode)
+        public MySQLEntityClient(DatabaseSettings settings, bool singleConnectionMode = true) : this(settings.ToString(), singleConnectionMode)
         {
         }
 
