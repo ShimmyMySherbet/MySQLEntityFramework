@@ -60,6 +60,15 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         }
 
         /// <summary>
+        /// Initializes a new instance of MySQLEntityClient using the specified connection provider
+        /// </summary>
+        /// <param name="connectionProvider"></param>
+        public MySQLEntityClient(IConnectionProvider connectionProvider)
+        {
+            ConnectionProvider = connectionProvider;
+        }
+
+        /// <summary>
         /// Initializes a new instance of MySQLEntityClient in ReuseConnection mode.
         /// </summary>
         /// <param name="connection">The conenction to use</param>
