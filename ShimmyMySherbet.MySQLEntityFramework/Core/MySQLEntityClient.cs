@@ -54,7 +54,6 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <summary>
         /// Legacy proxy method for <seealso cref="ConnectionProvider"/>.GetConnection
         /// </summary>
-        [Obsolete]
         public MySqlConnection GetConnection(bool autoOpen = true, bool forceNew = false)
         {
             return ConnectionProvider.GetConnection(autoOpen: autoOpen, forceNew: forceNew);
