@@ -42,6 +42,13 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             FinaliseConstructor();
         }
 
+        public DatabaseClient(IConnectionProvider connectionProvider, bool autoInit = true)
+        {
+            Client = new MySQLEntityClient(connectionProvider);
+            m_AutoInit = autoInit;
+            FinaliseConstructor();
+        }
+
         public DatabaseClient(string address, string username, string password, string database, ushort port = 3306, bool singleConnectionMode = true, bool autoInit = true)
         {
             Client = new MySQLEntityClient(address, username, password, database, port, singleConnectionMode);

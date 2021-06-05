@@ -10,6 +10,8 @@ namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
         private string m_ConnectionString;
         private MySqlConnection m_ConnectionInstance { get; set; }
 
+        public bool Connected => m_ConnectionInstance != null && m_ConnectionInstance.State == System.Data.ConnectionState.Open;
+
         public SingleConnectionProvider(MySqlConnection connection)
         {
             m_ConnectionInstance = connection;
@@ -94,6 +96,21 @@ namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
                 m_ConnectionInstance = new MySqlConnection(m_ConnectionString);
                 await m_ConnectionInstance.OpenAsync();
             }
+        }
+
+        public void Disconnect()
+        {
+            m_ConnectionInstance?.Close();
+        }
+
+        public async Task DisconnectAsync()
+        {
+            await m_ConnectionInstance?.CloseAsync();
+        }
+
+        public void Dispose()
+        {
+            m_ConnectionInstance.Dispose();
         }
     }
 }

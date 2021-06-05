@@ -66,7 +66,18 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <returns>Bulk Inserter client for this table</returns>
         public IBulkInserter<T> CreateInserter(int maxInsertsPerTransaction = 5000)
         {
-            return new TransactionalBulkInserter<T>(Client.GetConnection(), TableName, maxInsertsPerTransaction);
+            return new TransactionalBulkInserter<T>(Client.ConnectionProvider.GetConnection(), TableName, maxInsertsPerTransaction);
+        }
+
+        /// <summary>
+        /// Creates a Bulk Inserter client.
+        /// Use this when inserting large amounts of objects into the table, and where performance is critical.
+        /// </summary>
+        /// <param name="maxInsertsPerTransaction">Max insert operations per transaction. If you get Max Packet Size errors, reduce this number.</param>
+        /// <returns>Bulk Inserter client for this table</returns>
+        public async Task<IBulkInserter<T>> CreateInserterAsync(int maxInsertsPerTransaction = 5000)
+        {
+            return new TransactionalBulkInserter<T>(await Client.ConnectionProvider.GetConnectionAsync(), TableName, maxInsertsPerTransaction);
         }
 
         /// <summary>
@@ -135,7 +146,21 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// </summary>
         /// <param name="command">The MySQL query command. Use @TABLE to refer to the table, and @0 - @99 as arguments. Arguments ar esecurly escaped and formatted.</param>
         /// <param name="args">Arguments to escape and format into the command.</param>
+        public List<O> Query<O>(string command, params object[] args) => Client.Query<O>(InsertTableName(command), args);
+
+        /// <summary>
+        /// Selects a list of instances from the table
+        /// </summary>
+        /// <param name="command">The MySQL query command. Use @TABLE to refer to the table, and @0 - @99 as arguments. Arguments ar esecurly escaped and formatted.</param>
+        /// <param name="args">Arguments to escape and format into the command.</param>
         public async Task<List<T>> QueryAsync(string command, params object[] args) => await Client.QueryAsync<T>(InsertTableName(command), args);
+
+        /// <summary>
+        /// Selects a list of instances from the table
+        /// </summary>
+        /// <param name="command">The MySQL query command. Use @TABLE to refer to the table, and @0 - @99 as arguments. Arguments ar esecurly escaped and formatted.</param>
+        /// <param name="args">Arguments to escape and format into the command.</param>
+        public async Task<List<O>> QueryAsync<O>(string command, params object[] args) => await Client.QueryAsync<O>(InsertTableName(command), args);
 
         /// <summary>
         /// Selects a single object from the table
@@ -149,7 +174,37 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// </summary>
         /// <param name="command">The MySQL query command. Use @TABLE to refer to the table, and @0 - @99 as arguments. Arguments ar esecurly escaped and formatted.</param>
         /// <param name="args">Arguments to escape and format into the command.</param>
+        public O QuerySingle<O>(string command, params object[] args) => Client.QuerySingle<O>(InsertTableName(command), args);
+
+        /// <summary>
+        /// Selects a single object from the table
+        /// </summary>
+        /// <param name="command">The MySQL query command. Use @TABLE to refer to the table, and @0 - @99 as arguments. Arguments ar esecurly escaped and formatted.</param>
+        /// <param name="args">Arguments to escape and format into the command.</param>
         public async Task<T> QuerySingleAsync(string command, params object[] args) => await Client.QuerySingleAsync<T>(InsertTableName(command), args);
+
+        /// <summary>
+        /// Selects a single object from the table
+        /// </summary>
+        /// <param name="command">The MySQL query command. Use @TABLE to refer to the table, and @0 - @99 as arguments. Arguments ar esecurly escaped and formatted.</param>
+        /// <param name="args">Arguments to escape and format into the command.</param>
+        public async Task<O> QuerySingleAsync<O>(string command, params object[] args) => await Client.QuerySingleAsync<O>(InsertTableName(command), args);
+
+        /// <summary>
+        /// Executes a non query against the table
+        /// </summary>
+        /// <param name="command">The MySQL query command. Use @TABLE to refer to the table, and @0 - @99 as arguments. Arguments ar esecurly escaped and formatted.</param>
+        /// <param name="args">Arguments to escape and format into the command.</param>
+        /// <returns>Rows Modified</returns>
+        public int ExecuteNonQuery(string command, params object[] args) => Client.ExecuteNonQuery(InsertTableName(command), args);
+
+        /// <summary>
+        /// Executes a non query against the table
+        /// </summary>
+        /// <param name="command">The MySQL query command. Use @TABLE to refer to the table, and @0 - @99 as arguments. Arguments ar esecurly escaped and formatted.</param>
+        /// <param name="args">Arguments to escape and format into the command.</param>
+        /// <returns>Rows Modified</returns>
+        public async Task<int> ExecuteNonQueryAsync(string command, params object[] args) => await Client.ExecuteNonQueryAsync(InsertTableName(command), args);
 
         /// <summary>
         /// Securely replaces @TABLE with the table name

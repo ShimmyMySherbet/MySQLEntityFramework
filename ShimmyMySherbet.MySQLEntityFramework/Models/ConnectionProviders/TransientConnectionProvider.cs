@@ -8,6 +8,8 @@ namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
     {
         private string m_ConnectionString { get; set; }
 
+        public bool Connected => true;
+
         public TransientConnectionProvider(MySqlConnection connection)
         {
             m_ConnectionString = connection.ConnectionString;
@@ -60,6 +62,19 @@ namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
         public Task OpenAsync()
         {
             return Task.CompletedTask;
+        }
+
+        public void Disconnect()
+        {
+        }
+
+        public Task DisconnectAsync()
+        {
+            return Task.CompletedTask;
+        }
+
+        public void Dispose()
+        {
         }
     }
 }
