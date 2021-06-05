@@ -8,6 +8,8 @@ namespace ShimmyMySherbet.MySQL.EF.Models.Interfaces
     {
         bool Connected { get; }
 
+        string ConnectionString { get; }
+
         MySqlConnection GetConnection(bool autoOpen = true, bool forceNew = false);
 
         Task<MySqlConnection> GetConnectionAsync(bool autoOpen = true, bool forceNew = false);

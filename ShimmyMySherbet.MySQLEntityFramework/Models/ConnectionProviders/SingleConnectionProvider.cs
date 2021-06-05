@@ -1,6 +1,5 @@
 ﻿using MySql.Data.MySqlClient;
 using ShimmyMySherbet.MySQL.EF.Models.Interfaces;
-using System;
 using System.Threading.Tasks;
 
 namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
@@ -8,6 +7,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
     public class SingleConnectionProvider : IConnectionProvider
     {
         private string m_ConnectionString;
+        public string ConnectionString => m_ConnectionString;
         private MySqlConnection m_ConnectionInstance { get; set; }
 
         public bool Connected => m_ConnectionInstance != null && m_ConnectionInstance.State == System.Data.ConnectionState.Open;
@@ -53,7 +53,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
                 var conn = new MySqlConnection(m_ConnectionString);
                 if (autoOpen)
                 {
-                   await conn.OpenAsync();
+                    await conn.OpenAsync();
                 }
 
                 return conn;

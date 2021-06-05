@@ -22,7 +22,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <summary>
         /// The connection string used when SingleConnection is disabled.
         /// </summary>
-        public string ConnectionString { get; set; }
+        public string ConnectionString => ConnectionProvider.ConnectionString;
 
         protected bool AutoDispose = true;
 
@@ -38,7 +38,6 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// NOTE: If this is enabled, you need to call Connect()</param>
         public MySQLEntityClient(string ConnectionString, bool singleConnectionMode = true)
         {
-            this.ConnectionString = ConnectionString;
             if (singleConnectionMode)
             {
                 ConnectionProvider = new SingleConnectionProvider(ConnectionString);
@@ -91,14 +90,14 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// NOTE: If this is enabled, you need to call Connect()</param>
         public MySQLEntityClient(string Address, string Username, string Password = null, string Database = null, int Port = 3306, bool singleConnectionMode = true)
         {
-            ConnectionString = $"Server={Address};Uid={Username}{(Password != null ? $";Pwd={Password}" : "")}{(Database != null ? $";Database={Database}" : "")};Port={Port};";
+            var connectionString = $"Server={Address};Uid={Username}{(Password != null ? $";Pwd={Password}" : "")}{(Database != null ? $";Database={Database}" : "")};Port={Port};";
             if (singleConnectionMode)
             {
-                ConnectionProvider = new SingleConnectionProvider(ConnectionString);
+                ConnectionProvider = new SingleConnectionProvider(connectionString);
             }
             else
             {
-                ConnectionProvider = new TransientConnectionProvider(ConnectionString);
+                ConnectionProvider = new TransientConnectionProvider(connectionString);
             }
 
             Reader.IndexedHelper = IndexedTypeHelper;
@@ -139,26 +138,21 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// Only required for when ReuseSingleConnection is enabled.
         /// </summary>
         /// <returns>Connected</returns>
-        public bool Connect()
+        public bool Connect() => Connect(out EConnectionFailiureReason _);
+
+        public bool Connect(out EConnectionFailiureReason failiureReason)
         {
             try
             {
                 ConnectionProvider.Open();
+                failiureReason = EConnectionFailiureReason.SUCCESS;
                 return true;
             }
-            catch (Exception)
+            catch (MySqlException ex)
             {
+                failiureReason = (EConnectionFailiureReason)ex.ErrorCode;
                 return false;
             }
-        }
-
-        /// <summary>
-        /// Only required for when ReuseSingleConnection is enabled.
-        /// </summary>
-        public MySQLEntityClient Connect(out bool connected)
-        {
-            connected = Connect();
-            return this;
         }
 
         /// <summary>
@@ -176,6 +170,15 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             {
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Only required for when ReuseSingleConnection is enabled.
+        /// </summary>
+        public MySQLEntityClient Connect(out bool connected, out EConnectionFailiureReason failiureReason)
+        {
+            connected = Connect(out failiureReason);
+            return this;
         }
 
         /// <summary>

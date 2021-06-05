@@ -7,6 +7,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
     public class TransientConnectionProvider : IConnectionProvider
     {
         private string m_ConnectionString { get; set; }
+        public string ConnectionString => m_ConnectionString;
 
         public bool Connected => true;
 
