@@ -16,6 +16,8 @@ namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
 
         private Dictionary<int, MySqlConnection> m_Connections = new Dictionary<int, MySqlConnection>();
 
+        private List<MySqlConnection> m_ConnectionList = new List<MySqlConnection>();
+
         private int m_ThreadID => Thread.CurrentThread.ManagedThreadId;
 
         public ThreadedConnectionProvider(MySqlConnection connection)
@@ -64,10 +66,15 @@ namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
 
         public void Dispose()
         {
-            lock (m_Connections)
+            lock (m_ConnectionList)
             {
-                foreach (var conn in m_Connections.Values)
-                    conn.Dispose();
+                lock (m_Connections)
+                {
+                    foreach (var conn in m_ConnectionList)
+                        conn.Dispose();
+
+                    m_Connections.Clear();
+                }
             }
         }
 
@@ -85,6 +92,10 @@ namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
             }
 
             var conn = new MySqlConnection(m_ConnectionString);
+            lock (m_ConnectionList)
+            {
+                m_ConnectionList.Add(conn);
+            }
             if (autoOpen)
             {
                 conn.Open();
@@ -111,6 +122,10 @@ namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
             }
 
             var conn = new MySqlConnection(m_ConnectionString);
+            lock (m_ConnectionList)
+            {
+                m_ConnectionList.Add(conn);
+            }
             if (autoOpen)
             {
                 await conn.OpenAsync();
@@ -134,6 +149,10 @@ namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
             }
 
             var conn = new MySqlConnection(m_ConnectionString);
+            lock (m_ConnectionList)
+            {
+                m_ConnectionList.Add(conn);
+            }
             conn.Open();
 
             lock (m_Connections)
@@ -153,6 +172,10 @@ namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
             }
 
             var conn = new MySqlConnection(m_ConnectionString);
+            lock (m_ConnectionList)
+            {
+                m_ConnectionList.Add(conn);
+            }
             await conn.OpenAsync();
 
             lock (m_Connections)
