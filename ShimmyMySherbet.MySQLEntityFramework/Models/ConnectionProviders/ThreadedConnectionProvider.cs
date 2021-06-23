@@ -147,7 +147,8 @@ namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
             {
                 if (m_Connections.ContainsKey(m_ThreadID))
                 {
-                    return;
+                    m_ConnectionList.Remove(m_Connections[m_ThreadID]);
+                    m_Connections[m_ThreadID].Dispose();
                 }
             }
 

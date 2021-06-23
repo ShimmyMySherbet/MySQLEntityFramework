@@ -61,11 +61,16 @@ namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
 
         public void Open()
         {
+            using(var con = GetConnection(forceNew: true, autoOpen: true))
+            {
+            }
         }
 
-        public Task OpenAsync()
+        public async Task OpenAsync()
         {
-            return Task.CompletedTask;
+            using (var con = await GetConnectionAsync(forceNew: true, autoOpen: true))
+            {
+            }
         }
 
         public void Disconnect()
