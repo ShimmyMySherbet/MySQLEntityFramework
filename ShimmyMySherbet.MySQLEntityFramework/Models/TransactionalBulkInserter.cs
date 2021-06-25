@@ -19,12 +19,14 @@ namespace ShimmyMySherbet.MySQL.EF.Models
         private int m_Inserts = 0;
         private int m_max;
         private bool m_cnew = true;
+        private EInsertMode m_Mode;
 
-        public TransactionalBulkInserter(MySqlConnection connection, string table, int maxInsertsPerTransaction = 5000)
+        public TransactionalBulkInserter(MySqlConnection connection, string table, int maxInsertsPerTransaction = 5000, EInsertMode mode = EInsertMode.INSERT)
         {
             Table = table;
             m_Connection = connection;
             m_max = maxInsertsPerTransaction;
+            m_Mode = mode;
         }
 
         /// <summary>
@@ -35,7 +37,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models
             if (m_cnew)
             {
                 m_Inserts = 0;
-                m_Current = new BulkInserter<T>(m_Connection, Table);
+                m_Current = new BulkInserter<T>(m_Connection, Table, m_Mode);
                 m_Inserters.Add(m_Current);
                 m_cnew = false;
             }

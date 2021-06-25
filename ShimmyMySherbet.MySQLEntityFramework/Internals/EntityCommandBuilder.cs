@@ -76,6 +76,20 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     {
                         name = ((SQLPropertyName)attrib).Name;
                     }
+                    else if (attrib is SQLOmitOnNull)
+                    {
+                        if (!field.FieldType.IsPrimitive && field.GetValue(obj) == null)
+                        {
+                            include = false;
+                        }
+                    }
+                    else if (attrib is SQLOmitOnNull)
+                    {
+                        if (!field.FieldType.IsPrimitive && field.GetValue(obj) == null)
+                        {
+                            include = false;
+                        }
+                    }
                 }
                 if (include)
                 {
@@ -108,6 +122,13 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     {
                         name = ((SQLPropertyName)attrib).Name;
                     }
+                    else if (attrib is SQLOmitOnNull)
+                    {
+                        if (!field.FieldType.IsPrimitive && field.GetValue(obj) == null)
+                        {
+                            include = false;
+                        }
+                    }
                 }
                 if (include)
                 {
@@ -130,6 +151,8 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             {
                 bool include = true;
                 string Name = field.Name;
+                bool includeUpdate = true;
+
                 bool omitUpdate = false;
                 foreach (Attribute attrib in Attribute.GetCustomAttributes(field))
                 {
@@ -146,14 +169,21 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     {
                         omitUpdate = true;
                     }
+                    else if (attrib is SQLOmitOnNull)
+                    {
+                        if (!field.FieldType.IsPrimitive && field.GetValue(obj) == null)
+                        {
+                            includeUpdate = false;
+                        }
+                    }
                 }
                 if (include)
                 {
                     if (sqlMetas.Where(x => string.Equals(x.Name, Name, StringComparison.InvariantCultureIgnoreCase)).Count() != 0) continue;
-                    sqlMetas.Add(new SQLMetaField(Name, sqlMetas.Count, field, omitUpdate));
+                    sqlMetas.Add(new SQLMetaField(Name, sqlMetas.Count, field, omitUpdate) { IncludeUpdate = includeUpdate });
                 }
             }
-            string command = $"INSERT INTO `{table}` ({string.Join(", ", sqlMetas.CastEnumeration(x => x.Name))}) VALUES ({string.Join(", ", sqlMetas.CastEnumeration(x => $"@{x.Index}"))}) ON DUPLICATE KEY UPDATE {string.Join(", ", sqlMetas.Where(x => !x.OmitUpdate).Select(x => $"`{x.Name}`=@{x.Index}"))};";
+            string command = $"INSERT INTO `{table}` ({string.Join(", ", sqlMetas.CastEnumeration(x => x.Name))}) VALUES ({string.Join(", ", sqlMetas.CastEnumeration(x => $"@{x.Index}"))}) ON DUPLICATE KEY UPDATE {string.Join(", ", sqlMetas.Where(x => !x.OmitUpdate && x.IncludeUpdate).Select(x => $"`{x.Name}`=@{x.Index}"))};";
             MySqlCommand sqlCommand = (Connection != null ? new MySqlCommand(command, Connection) : new MySqlCommand(command));
             foreach (SQLMetaField meta in sqlMetas)
                 sqlCommand.Parameters.AddWithValue($"@{meta.Index}", meta.Field.GetValue(obj));
@@ -166,6 +196,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             foreach (FieldInfo field in typeof(T).GetFields())
             {
                 bool include = true;
+                bool includeUpdate = true;
                 string name = field.Name;
                 bool omitUpdate = false;
                 foreach (Attribute attrib in Attribute.GetCustomAttributes(field))
@@ -183,14 +214,21 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     {
                         omitUpdate = true;
                     }
+                    else if (attrib is SQLOmitOnNull)
+                    {
+                        if (!field.FieldType.IsPrimitive && field.GetValue(obj) == null)
+                        {
+                            includeUpdate = false;
+                        }
+                    }
                 }
                 if (include)
                 {
                     if (sqlMetas.Where(x => string.Equals(x.Name, name, StringComparison.InvariantCultureIgnoreCase)).Count() != 0) continue;
-                    sqlMetas.Add(new SQLMetaField(name, sqlMetas.Count, field, omitUpdate));
+                    sqlMetas.Add(new SQLMetaField(name, sqlMetas.Count, field, omitUpdate) { IncludeUpdate = includeUpdate });
                 }
             }
-            string command = $"INSERT INTO `{table}` ({string.Join(", ", sqlMetas.CastEnumeration(x => x.Name))}) VALUES ({string.Join(", ", sqlMetas.CastEnumeration(x => $"@{x.Index}"))}) ON DUPLICATE KEY UPDATE {string.Join(", ", sqlMetas.Where(x => !x.OmitUpdate).Select(x => $"`{x.Name}`=@{x.Index}"))};";
+            string command = $"INSERT INTO `{table}` ({string.Join(", ", sqlMetas.CastEnumeration(x => x.Name))}) VALUES ({string.Join(", ", sqlMetas.CastEnumeration(x => $"@{x.Index}"))}) ON DUPLICATE KEY UPDATE {string.Join(", ", sqlMetas.Where(x => !x.OmitUpdate && !x.IncludeUpdate).Select(x => $"`{x.Name}`=@{x.Index}"))};";
             properties = new PropertyList();
             foreach (SQLMetaField meta in sqlMetas)
                 properties.Add($"@{prefix}_{meta.Index}", meta.Field.GetValue(obj));
@@ -221,6 +259,13 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     else if (Attrib is SQLOmitUpdate)
                     {
                         omitUpdate = true;
+                    }
+                    else if (Attrib is SQLOmitOnNull)
+                    {
+                        if (!field.FieldType.IsPrimitive && field.GetValue(obj) == null)
+                        {
+                            include = false;
+                        }
                     }
                 }
                 if (include)
@@ -277,6 +322,13 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     {
                         omitUpdate = true;
                     }
+                    else if (attrib is SQLOmitOnNull)
+                    {
+                        if (!field.FieldType.IsPrimitive && field.GetValue(obj) == null)
+                        {
+                            include = false;
+                        }
+                    }
                 }
                 if (include)
                 {
@@ -330,6 +382,13 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     {
                         name = ((SQLPropertyName)attrib).Name;
                     }
+                    else if (attrib is SQLOmitOnNull)
+                    {
+                        if (!field.FieldType.IsPrimitive && field.GetValue(obj) == null)
+                        {
+                            break;
+                        }
+                    }
                 }
                 if (isPrimary)
                 {
@@ -365,6 +424,13 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     else if (attrib is SQLPropertyName)
                     {
                         name = ((SQLPropertyName)attrib).Name;
+                    }
+                    else if (attrib is SQLOmitOnNull)
+                    {
+                        if (!field.FieldType.IsPrimitive && field.GetValue(obj) == null)
+                        {
+                            break;
+                        }
                     }
                 }
                 if (isPrimary)

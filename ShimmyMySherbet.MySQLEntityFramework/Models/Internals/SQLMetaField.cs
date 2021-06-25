@@ -13,6 +13,8 @@ namespace ShimmyMySherbet.MySQL.EF.Models.Internals
         public int Index;
         public FieldInfo Field;
         public bool OmitUpdate = false;
+
+        public bool IncludeUpdate = true;
         public SQLMetaField(string Name = null, int Index = 0, FieldInfo Field = null, bool omitupdate = false)
         {
             this.Name = Name;
