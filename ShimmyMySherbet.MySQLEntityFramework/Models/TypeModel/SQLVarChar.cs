@@ -2,8 +2,9 @@
 using ShimmyMySherbet.MySQL.EF.Models.Internals;
 using ShimmyMySherbet.MySQL.EF.Models.TypeModel;
 
-namespace ShimmyMySherbet.MySQL.EF.Models
+namespace ShimmyMySherbet.MySQL.EF.Models.TypeModel
 {
+    [SQLTypeName("VarChar"), SQLNoSign]
     public class SQLVarChar : SQLType
     {
         private int m_Length;

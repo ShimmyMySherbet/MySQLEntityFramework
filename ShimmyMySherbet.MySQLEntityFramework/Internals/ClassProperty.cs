@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ShimmyMySherbet.MySQL.EF.Internals
 {
@@ -38,7 +35,6 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
         public override object GetValue(object instance)
         {
             return m_info.GetValue(instance);
-
         }
 
         public override void SetValue(object instance, object obj)

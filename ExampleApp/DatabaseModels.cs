@@ -1,4 +1,6 @@
 ﻿using ShimmyMySherbet.MySQL.EF.Models;
+using ShimmyMySherbet.MySQL.EF.Models.TypeModel;
+using ShimmyMySherbet.MySQL.EF.Models.TypeModel.Custom;
 using System;
 
 namespace ExampleApp
@@ -16,7 +18,14 @@ namespace ExampleApp
         [SQLIndex]
         public ulong SteamID { get; set; }
 
+        [SQLVarChar(32)]
         public string EmailAddress { get; set; }
+
+        [SQLIPv4]
+        public string IPv4 { get; set; }
+
+        [SQLIPv6]
+        public string IPv6 { get; set; }
 
         public DateTime? Created { get; set; }
     }

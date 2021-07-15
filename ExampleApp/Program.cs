@@ -19,31 +19,9 @@ namespace ExampleApp
             Console.WriteLine($"<>Status: {fail}");
             db.CheckSchema();
 
-            var bulkex = new BulkExecutor(provider.GetConnection()); // Represents a transaction
 
 
-            for(int i = 0; i < 100; i++)
-            {
-                bulkex.Insert(new UserAccount()
-                {
-                    HashData = new byte[0],
-                    SteamID = (ulong)i,
-                    EmailAddress = $"{i}@gmail.com",
-                    Username = $"User_{i}",
-                    Created = DateTime.Now
-                }, "users");
-            }
-
-            var swd = new Stopwatch();
-            swd.Start();
-            var rows = bulkex.Commit();
-            swd.Stop();
-
-            Console.WriteLine($"BulkEx comitted in {swd.ElapsedMilliseconds}ms ({rows} rows)");
-
-
-
-            var users = db.Accounts.Query("SELECT * FROM @TABLE", "user_10");
+            var users = db.Accounts.Query("SELECT * FROM @TABLE");
 
             foreach (var u in users)
             {

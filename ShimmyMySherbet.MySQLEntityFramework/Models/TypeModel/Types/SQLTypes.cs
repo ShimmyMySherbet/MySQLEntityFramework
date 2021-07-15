@@ -92,11 +92,6 @@ namespace ShimmyMySherbet.MySQL.EF.Models.TypeModel.Types
     {
     }
 
-    [SQLTypeName("VARCHAR"), SQLNetType(null), SQLLength(255), SQLNoSign]
-    public sealed class SQLTypeVarChar : SQLType
-    {
-    }
-
     [SQLTypeName("TINYTEXT"), SQLNetType(null), SQLLength(255), SQLNoSign]
     public sealed class SQLTypeTinyText : SQLType
     {

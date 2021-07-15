@@ -49,6 +49,20 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             }
         }
 
+        private SQLType m_OverrideType = null;
+        private bool m_HasOverride = false;
+
+        public SQLType OverrideType
+        {
+            get
+            {
+                if (!m_HasOverride)
+                {
+                    m_OverrideType = GetAttribute<SQLType>();
+                }
+                return m_OverrideType;
+            }
+        }
 
         public abstract bool AttributeDefined<T>() where T : Attribute;
 
