@@ -1,7 +1,7 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;net48;net5</TargetFrameworks>
     <Description>A lightweight high-performance .NET MySQL Wrapper and Entity Framework. Designed to make working with a MySQL database as easy as possible</Description>
     <Copyright></Copyright>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
