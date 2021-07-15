@@ -2,16 +2,16 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Description>A lightweight .NET MySQL Wrapper and Entity Framework.</Description>
+    <Description>A lightweight high-performance .NET MySQL Wrapper and Entity Framework. Designed to make working with a MySQL database as easy as possible</Description>
     <Copyright></Copyright>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/ShimmyMySherbet/MySQLEntityFramework</RepositoryUrl>
     <PackageTags>MySQL Wrapper EntityFramework</PackageTags>
     <NeutralLanguage>en</NeutralLanguage>
     <PackageReleaseNotes></PackageReleaseNotes>
-    <Version>1.6.3</Version>
+    <Version>1.6.5</Version>
     <PackageProjectUrl>https://github.com/ShimmyMySherbet/MySQLEntityFramework</PackageProjectUrl>
-    <AssemblyVersion>1.6.3.0</AssemblyVersion>
+    <AssemblyVersion>1.6.5.0</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>
