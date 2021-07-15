@@ -1,9 +1,8 @@
-﻿using System;
+﻿using ShimmyMySherbet.MySQL.EF.Models.Internals;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices.ComTypes;
-using ShimmyMySherbet.MySQL.EF.Models.Internals;
 
 namespace ShimmyMySherbet.MySQL.EF.Models.TypeModel
 {
@@ -29,6 +28,12 @@ namespace ShimmyMySherbet.MySQL.EF.Models.TypeModel
 
         public SQLType GetSQLTypeIndexed(Type T)
         {
+            var real = Nullable.GetUnderlyingType(T);
+            if (real != null)
+            {
+                T = real;
+            }
+
             if (NetTypeIndex.ContainsKey(T))
             {
                 return NetTypeIndex[T];
@@ -65,6 +70,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models.TypeModel
         private static Type[] UInt32Equivilants = { typeof(byte), typeof(UInt16) };
         private static Type[] Int64Equivilants = { typeof(byte), typeof(sbyte), typeof(Int16), typeof(UInt16), typeof(UInt32), typeof(UInt32) };
         private static Type[] UInt64Equivilants = { typeof(byte), typeof(UInt16), typeof(UInt32) };
+
         /// <summary>
         /// Checks for Loss-less casts
         /// </summary>
@@ -73,36 +79,40 @@ namespace ShimmyMySherbet.MySQL.EF.Models.TypeModel
             if (TargetType == typeof(Int16))
             {
                 return Int16Equivilants.Contains(BaseType);
-            } else if (TargetType == typeof(UInt16))
+            }
+            else if (TargetType == typeof(UInt16))
             {
                 return UInt16Equivilants.Contains(BaseType);
-            } else if (TargetType == typeof(Int32))
+            }
+            else if (TargetType == typeof(Int32))
             {
                 return Int32Equivilants.Contains(BaseType);
-            } else if (TargetType == typeof(UInt32))
+            }
+            else if (TargetType == typeof(UInt32))
             {
                 return UInt32Equivilants.Contains(BaseType);
-            } else if (TargetType == typeof(Int64))
+            }
+            else if (TargetType == typeof(Int64))
             {
                 return Int64Equivilants.Contains(BaseType);
-            } else if (TargetType == typeof(UInt64))
+            }
+            else if (TargetType == typeof(UInt64))
             {
                 return UInt64Equivilants.Contains(BaseType);
-            } else
+            }
+            else
             {
                 return false;
             }
         }
-
 
         public static bool NumericType(Type T)
         {
             if (T.IsPrimitive)
             {
                 return ((T != typeof(char)) && (T != typeof(string)) && (T != typeof(object)));
-            } else return false;
+            }
+            else return false;
         }
-
-
     }
 }

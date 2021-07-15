@@ -93,6 +93,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
         public async Task<List<T>> ReadSQLBaseTypesUnsafeAsync<T>(DbDataReader Reader, int limit = -1)
         {
+
             List<T> Entries = new List<T>();
             int CompatableColumn = -1;
             bool IsNumeric = SQLTypeHelper.NumericType(typeof(T));
@@ -124,26 +125,14 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
         public List<T> ReadClasses<T>(IDataReader Reader, int limit = -1)
         {
-            Type TT = typeof(T);
-            Dictionary<string, FieldInfo> BaseFields = new Dictionary<string, FieldInfo>(StringComparer.InvariantCultureIgnoreCase);
-            foreach (FieldInfo Field in typeof(T).GetFields())
+            Dictionary<string, IClassField> BaseFields = new Dictionary<string, IClassField>(StringComparer.InvariantCultureIgnoreCase);
+
+            foreach(var field in EntityCommandBuilder.GetClassFields<T>())
             {
-                bool IncludeField = true;
-                string Name = Field.Name;
-                foreach (Attribute attribute in Attribute.GetCustomAttributes(Field))
+                if (!BaseFields.ContainsKey(field.SQLName))
                 {
-                    if (attribute is SQLIgnore)
-                    {
-                        IncludeField = false;
-                        break;
-                    }
-                    else if (attribute is SQLPropertyName)
-                    {
-                        Name = ((SQLPropertyName)attribute).Name;
-                    }
+                    BaseFields[field.SQLName] = field;
                 }
-                if (IncludeField && !BaseFields.ContainsKey(Name))
-                    BaseFields.Add(Name, Field);
             }
             Dictionary<string, SQLFieldReferance> SQLFields = new Dictionary<string, SQLFieldReferance>(StringComparer.InvariantCultureIgnoreCase);
             for (int i = 0; i < Reader.FieldCount; i++)
@@ -164,7 +153,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                 {
                     if (BaseFields.ContainsKey(Referance.Name))
                     {
-                        FieldInfo field = BaseFields[Referance.Name];
+                        var field = BaseFields[Referance.Name];
 
                         var obj = Reader.GetValue(Referance.Index);
                         if (obj is DBNull)
@@ -194,27 +183,16 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
         public async Task<List<T>> ReadClassesAsync<T>(DbDataReader Reader, int limit = -1)
         {
-            Type TT = typeof(T);
-            Dictionary<string, FieldInfo> BaseFields = new Dictionary<string, FieldInfo>(StringComparer.InvariantCultureIgnoreCase);
-            foreach (FieldInfo Field in typeof(T).GetFields())
+
+            var BaseFields = new Dictionary<string, IClassField>(StringComparer.InvariantCultureIgnoreCase);
+            foreach (var field in EntityCommandBuilder.GetClassFields<T>())
             {
-                bool IncludeField = true;
-                string Name = Field.Name;
-                foreach (Attribute attribute in Attribute.GetCustomAttributes(Field))
+                if (!BaseFields.ContainsKey(field.SQLName))
                 {
-                    if (attribute is SQLIgnore)
-                    {
-                        IncludeField = false;
-                        break;
-                    }
-                    else if (attribute is SQLPropertyName)
-                    {
-                        Name = ((SQLPropertyName)attribute).Name;
-                    }
+                    BaseFields[field.SQLName] = field;
                 }
-                if (IncludeField && !BaseFields.ContainsKey(Name))
-                    BaseFields.Add(Name, Field);
             }
+
             Dictionary<string, SQLFieldReferance> SQLFields = new Dictionary<string, SQLFieldReferance>(StringComparer.InvariantCultureIgnoreCase);
             for (int i = 0; i < Reader.FieldCount; i++)
             {
@@ -234,7 +212,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                 {
                     if (BaseFields.ContainsKey(Referance.Name))
                     {
-                        FieldInfo field = BaseFields[Referance.Name];
+                        var field = BaseFields[Referance.Name];
                         var obj = Reader.GetValue(Referance.Index);
                         if (obj is DBNull)
                         {

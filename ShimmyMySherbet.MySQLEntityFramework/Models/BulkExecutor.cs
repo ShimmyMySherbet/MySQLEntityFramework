@@ -20,10 +20,15 @@ namespace ShimmyMySherbet.MySQL.EF.Models
         public BulkExecutor(MySqlConnection connection)
         {
             m_Connection = connection;
+            ExecuteNonQuery("START TRANSACTION");
         }
 
         public void ExecuteNonQuery(string command, params object[] parameters)
         {
+            if (!command.EndsWith(";"))
+            {
+                command += ';';
+            }
             string value = EntityCommandBuilder.BuildCommandContent(command, m_Assigner.AssignPrefix(), out var properties, parameters);
             lock (m_Commands)
             {
@@ -78,6 +83,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models
 
         public int Commit()
         {
+            ExecuteNonQuery("COMMIT");
             lock (m_Commands)
                 lock (m_Connection)
                     lock (m_MasterPropertiesList)
@@ -98,6 +104,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models
 
         public async Task<int> CommitAsync()
         {
+            ExecuteNonQuery("COMMIT");
             string cmdContent;
             PropertyList properties = new PropertyList();
 

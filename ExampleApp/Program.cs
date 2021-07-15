@@ -1,6 +1,8 @@
-﻿using ShimmyMySherbet.MySQL.EF.Models;
+﻿using ShimmyMySherbet.MySQL.EF.Internals;
+using ShimmyMySherbet.MySQL.EF.Models;
 using ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders;
 using System;
+using System.Diagnostics;
 
 namespace ExampleApp
 {
@@ -11,36 +13,68 @@ namespace ExampleApp
             var settings = new DatabaseSettings("127.0.0.1", "TestDatabase", "kn8hSzrg2OVhTWHN", "test");
             ThreadedConnectionProvider provider = new ThreadedConnectionProvider(settings);
 
-
             var db = new Database(provider);
 
             Console.WriteLine($"Connected: {db.Connect(out string fail)}");
             Console.WriteLine($"<>Status: {fail}");
             db.CheckSchema();
 
+            var bulkex = new BulkExecutor(provider.GetConnection()); // Represents a transaction
+
+
+            for(int i = 0; i < 100; i++)
+            {
+                bulkex.Insert(new UserAccount()
+                {
+                    HashData = new byte[0],
+                    SteamID = (ulong)i,
+                    EmailAddress = $"{i}@gmail.com",
+                    Username = $"User_{i}",
+                    Created = DateTime.Now
+                }, "users");
+            }
+
+            var swd = new Stopwatch();
+            swd.Start();
+            var rows = bulkex.Commit();
+            swd.Stop();
+
+            Console.WriteLine($"BulkEx comitted in {swd.ElapsedMilliseconds}ms ({rows} rows)");
+
+
+
             var users = db.Accounts.Query("SELECT * FROM @TABLE", "user_10");
 
-            foreach(var u in users)
+            foreach (var u in users)
             {
                 PrintUser(u);
             }
 
-
-            var usr = new UserAccount()
+            while (true)
             {
-                SteamID = 4324234324,
-                Created = DateTime.Now,
-                HashData = new byte[5],
-                EmailAddress = "usrss@gg.com",
-                Username = "userss"
-            };
+                Console.Write("new user: ");
+                var usrd = Console.ReadLine();
 
-            //db.Accounts.Insert(usr);
+                if (string.IsNullOrWhiteSpace(usrd)) break;
 
+                var usr = new UserAccount()
+                {
+                    SteamID = (ulong)Math.Abs(usrd.GetHashCode()),
+                    Created = DateTime.Now,
+                    HashData = new byte[usrd.Length],
+                    EmailAddress = $"{usrd}@gg.com",
+                    Username = usrd
+                };
 
+                Stopwatch sw = new Stopwatch();
+                sw.Start();
+                db.Accounts.Insert(usr);
+                sw.Stop();
 
-
-
+                Console.WriteLine($"Inserted in {sw.ElapsedMilliseconds}ms ({sw.ElapsedTicks} ticks)");
+                //Console.WriteLine($"Field: {EntityCommandBuilder.F_Build / 10000}ms ({EntityCommandBuilder.F_Build} ticks), Command Total: {EntityCommandBuilder.C_Build / 10000}ms ({EntityCommandBuilder.C_Build} ticks)");
+            }
+            Console.WriteLine("done.");
             Console.ReadLine();
         }
 

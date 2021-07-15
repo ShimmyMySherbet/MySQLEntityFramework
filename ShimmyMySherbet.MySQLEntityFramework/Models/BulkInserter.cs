@@ -88,7 +88,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models
             {
                 lock (m_CommandBuilder)
                 {
-                    m_CommandBuilder.Append($"{(m_FirstInsert ? "" : ",")}\n({string.Join(", ", m_SQLMetas.CastEnumeration(x => $"@{prefix}_{x.Index}"))})");
+                    m_CommandBuilder.Append($"{(m_FirstInsert ? "" : ",")}\n({string.Join(", ", m_SQLMetas.CastEnumeration(x => $"@{prefix}_{x.FieldIndex}"))})");
                 }
                 m_FirstInsert = false;
 
@@ -96,7 +96,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models
                 {
                     foreach (var meta in m_SQLMetas)
                     {
-                        m_BuildProperties.Add($"@{prefix}_{meta.Index}", meta.Field.GetValue(instance));
+                        m_BuildProperties.Add($"@{prefix}_{meta.FieldIndex}", meta.Field.GetValue(instance));
                     }
                 }
             }
