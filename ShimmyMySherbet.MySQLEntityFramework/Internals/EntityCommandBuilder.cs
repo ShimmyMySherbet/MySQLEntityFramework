@@ -4,7 +4,10 @@ using ShimmyMySherbet.MySQL.EF.Models.Exceptions;
 using ShimmyMySherbet.MySQL.EF.Models.Internals;
 using ShimmyMySherbet.MySQL.EF.Models.TypeModel;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -17,19 +20,43 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
     {
         private SQLTypeHelper m_TypeHelper = new SQLTypeHelper();
 
-        [ThreadStatic]
-        private static Dictionary<Type, List<IClassField>> m_FieldCache = new Dictionary<Type, List<IClassField>>();
+        private static IDictionary<Type, List<IClassField>> m_FieldCache = new ConcurrentDictionary<Type, List<IClassField>>();
 
-        internal static List<IClassField> GetClassFields(Type model, bool autoOmit = true)
+        private static bool m_CacheEnabled { get; set; } = true;
+
+        /// <summary>
+        /// Toggles the use of cached class models that represent a type's fields and properties for SQL methods.
+        /// </summary>
+        public static void SetCacheEnabled(bool enabled)
         {
-            if (m_FieldCache.ContainsKey(model))
+            m_CacheEnabled = enabled;
+        }
+
+        internal  static List<IClassField> GetClassFields(Type model)
+        {
+            if (model == null)
             {
-                return m_FieldCache[model];
+                throw new ArgumentNullException("model");
             }
+
+            if (m_CacheEnabled)
+            {
+
+                if (m_FieldCache == null)
+                {
+                    m_FieldCache = new ConcurrentDictionary<Type, List<IClassField>>();
+                } else if (m_FieldCache.ContainsKey(model))
+                {
+                    return m_FieldCache[model];
+                }
+            }
+
             var fields = new List<IClassField>();
             var index = 0;
+
             foreach (var field in model.GetFields())
             {
+
                 var f = new ClassField(field, index);
 
                 if (!f.Meta.Ignore)
@@ -39,21 +66,29 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                 }
             }
 
-
             if (model.GetCustomAttribute<SQLIngoreProperties>() == null)
             {
+
                 foreach (var property in model.GetProperties())
                 {
+
                     var p = new ClassProperty(property, index);
+
                     if (!p.Meta.Ignore)
                     {
                         index++;
                         fields.Add(p);
                     }
                 }
+
             }
 
-            m_FieldCache[model] = fields;
+
+            if (m_CacheEnabled)
+            {
+
+                m_FieldCache[model] = fields;
+            }
 
             return fields;
         }
