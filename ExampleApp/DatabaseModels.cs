@@ -1,7 +1,7 @@
-﻿using ShimmyMySherbet.MySQL.EF.Models;
+﻿using System;
+using ShimmyMySherbet.MySQL.EF.Models;
 using ShimmyMySherbet.MySQL.EF.Models.TypeModel;
 using ShimmyMySherbet.MySQL.EF.Models.TypeModel.Custom;
-using System;
 
 namespace ExampleApp
 {
@@ -28,6 +28,19 @@ namespace ExampleApp
         public string IPv6 { get; set; }
 
         public DateTime? Created { get; set; }
+    }
+
+    public class CompositeTestObject // Testing composite keys (multipel primary keys)
+    {
+        [SQLPrimaryKey, SQLAutoIncrement]
+        public ulong ID { get; set; }
+
+        [SQLPrimaryKey, SQLDefault("User"), SQLVarChar(128)]
+        public string Class { get; set; }
+
+        public string Profile { get; set; }
+
+        public DateTime Active { get; set; }
     }
 
     public class UserPost

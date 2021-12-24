@@ -9,6 +9,8 @@ namespace ExampleApp
         public DatabaseTable<UserAccount> Accounts { get; } = new DatabaseTable<UserAccount>("users");
         public PostsDatabaseTable Posts { get; } = new PostsDatabaseTable("Posts");
 
+        public CompositesTable Composites { get; } = new CompositesTable();
+
         public Database(DatabaseSettings settings) : base(settings)
         {
         }

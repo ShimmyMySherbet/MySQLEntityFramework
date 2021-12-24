@@ -1,12 +1,12 @@
-﻿using MySql.Data.MySqlClient;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using MySql.Data.MySqlClient;
 using ShimmyMySherbet.MySQL.EF.Internals;
 using ShimmyMySherbet.MySQL.EF.Models;
 using ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders;
 using ShimmyMySherbet.MySQL.EF.Models.Interfaces;
 using ShimmyMySherbet.MySQL.EF.Models.TypeModel;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace ShimmyMySherbet.MySQL.EF.Core
 {
@@ -29,6 +29,12 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         protected EntityCommandBuilder CommandBuilder = new EntityCommandBuilder();
         protected MySQLEntityReader Reader = new MySQLEntityReader();
         protected SQLTypeHelper IndexedTypeHelper = new SQLTypeHelper();
+
+        /// <summary>
+        /// When enabled, numeric auto-increment primary key fields will be updated with the ID assigned to the new row when inserting.
+        /// This is still an experimental feature
+        /// </summary>
+        public bool AutoUpdateInstanceID { get; set; } = false;
 
         /// <summary>
         /// </summary>

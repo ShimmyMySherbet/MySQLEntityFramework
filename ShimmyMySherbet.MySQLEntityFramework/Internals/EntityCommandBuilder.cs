@@ -1,16 +1,14 @@
-﻿using MySql.Data.MySqlClient;
+﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using MySql.Data.MySqlClient;
 using ShimmyMySherbet.MySQL.EF.Models;
 using ShimmyMySherbet.MySQL.EF.Models.Exceptions;
 using ShimmyMySherbet.MySQL.EF.Models.Internals;
 using ShimmyMySherbet.MySQL.EF.Models.TypeModel;
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Diagnostics.Contracts;
-using System.Linq;
-using System.Reflection;
-using System.Text;
 
 #pragma warning disable CA2100
 
@@ -32,7 +30,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             m_CacheEnabled = enabled;
         }
 
-        internal  static List<IClassField> GetClassFields(Type model)
+        internal static List<IClassField> GetClassFields(Type model)
         {
             if (model == null)
             {
@@ -41,11 +39,11 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
             if (m_CacheEnabled)
             {
-
                 if (m_FieldCache == null)
                 {
                     m_FieldCache = new ConcurrentDictionary<Type, List<IClassField>>();
-                } else if (m_FieldCache.ContainsKey(model))
+                }
+                else if (m_FieldCache.ContainsKey(model))
                 {
                     return m_FieldCache[model];
                 }
@@ -56,7 +54,6 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
             foreach (var field in model.GetFields())
             {
-
                 var f = new ClassField(field, index);
 
                 if (!f.Meta.Ignore)
@@ -68,10 +65,8 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
             if (model.GetCustomAttribute<SQLIngoreProperties>() == null)
             {
-
                 foreach (var property in model.GetProperties())
                 {
-
                     var p = new ClassProperty(property, index);
 
                     if (!p.Meta.Ignore)
@@ -80,13 +75,10 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                         fields.Add(p);
                     }
                 }
-
             }
-
 
             if (m_CacheEnabled)
             {
-
                 m_FieldCache[model] = fields;
             }
 
@@ -185,20 +177,35 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             return command;
         }
 
+        internal static string BuildSelector(IEnumerable<IClassField> primaryKeys, object instance, out ParamObject[] parameters, int? prefix = null)
+        {
+            var count = primaryKeys.Count();
+            parameters = new ParamObject[count];
+            var selections = new string[count];
+            for (int i = 0; i < count; i++)
+            {
+                var key = primaryKeys.ElementAt(i);
+                selections[i] = $"{key.SQLName}=@{(prefix != null ? $"{prefix}_" : "")}KEY{i}";
+                parameters[i] = new ParamObject($"@{(prefix != null ? $"{prefix}_" : "")}KEY{i}", key.GetValue(instance));
+            }
+
+            return string.Join(" AND ", selections);
+        }
+
         public static MySqlCommand BuildUpdateCommand<T>(T obj, string table, MySqlConnection connection = null)
         {
             var fields = GetClassFields<T>(x => !x.ShouldOmit(obj) && !x.Meta.OmitOnUpdate);
 
-            var primaryKey = fields.FirstOrDefault(x => x.Meta.IsPrimaryKey);
+            var primaryKeys = fields.Where(x => x.Meta.IsPrimaryKey);
 
-            if (primaryKey == null)
+            if (!primaryKeys.Any())
             {
                 throw new NoPrimaryKeyException();
             }
 
-            string Command = $"UPDATE `{table}` SET {string.Join(", ", fields.CastEnumeration(x => $"{x.SQLName}=@{x.FieldIndex}"))} WHERE {primaryKey.SQLName}=@KEY;";
+            string Command = $"UPDATE `{table}` SET {string.Join(", ", fields.CastEnumeration(x => $"{x.SQLName}=@{x.FieldIndex}"))} WHERE {BuildSelector(primaryKeys, obj, out var prm)};";
             MySqlCommand sqlCommand = (connection != null ? new MySqlCommand(Command, connection) : new MySqlCommand(Command));
-            sqlCommand.Parameters.AddWithValue("@KEY", primaryKey.GetValue(obj));
+            sqlCommand.Add(prm);
             foreach (var meta in fields)
                 sqlCommand.Parameters.AddWithValue($"@{meta.FieldIndex}", meta.GetValue(obj));
             return sqlCommand;
@@ -208,16 +215,16 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
         {
             var fields = GetClassFields<T>(x => !x.ShouldOmit(obj) && !x.Meta.OmitOnUpdate);
 
-            var primaryKey = fields.FirstOrDefault(x => x.Meta.IsPrimaryKey);
+            var primaryKeys = fields.Where(x => x.Meta.IsPrimaryKey);
 
-            if (primaryKey == null)
+            if (!primaryKeys.Any())
             {
                 throw new NoPrimaryKeyException();
             }
 
-            string command = $"UPDATE `{table}` SET {string.Join(", ", fields.CastEnumeration(x => $"{x.SQLName}=@{prefix}_{x.FieldIndex}"))} WHERE {primaryKey.SQLName}=@{prefix}KEY;";
+            string command = $"UPDATE `{table}` SET {string.Join(", ", fields.CastEnumeration(x => $"{x.SQLName}=@{prefix}_{x.FieldIndex}"))} WHERE {BuildSelector(primaryKeys, obj, out var prop, prefix)};";
             properties = new PropertyList();
-            properties.Add($"@{prefix}KEY", primaryKey.GetValue(obj));
+            properties.Add(prop);
 
             foreach (var meta in fields)
                 properties.Add($"@{prefix}_{meta.FieldIndex}", meta.GetValue(obj));
@@ -229,15 +236,15 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
         {
             var fields = GetClassFields<T>(x => !x.ShouldOmit(obj));
 
-            var primaryKey = fields.FirstOrDefault(x => x.Meta.IsPrimaryKey);
+            var primaryKeys = fields.Where(x => x.Meta.IsPrimaryKey);
 
-            if (primaryKey == null)
+            if (!primaryKeys.Any())
             {
                 throw new NoPrimaryKeyException();
             }
-            string command = $"DELETE FROM `{table}` WHERE {primaryKey.SQLName}=@KEY;";
+            string command = $"DELETE FROM `{table}` WHERE {BuildSelector(primaryKeys, obj, out var prms)};";
             MySqlCommand sqlCommand = (sqlConnection != null ? new MySqlCommand(command, sqlConnection) : new MySqlCommand(command));
-            sqlCommand.Parameters.AddWithValue("@KEY", primaryKey.GetValue(obj));
+            sqlCommand.Add(prms);
             return sqlCommand;
         }
 
@@ -245,16 +252,16 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
         {
             var fields = GetClassFields<T>(x => !x.ShouldOmit(obj));
 
-            var primaryKey = fields.FirstOrDefault(x => x.Meta.IsPrimaryKey);
+            var primaryKeys = fields.Where(x => x.Meta.IsPrimaryKey);
 
-            if (primaryKey == null)
+            if (!primaryKeys.Any())
             {
                 throw new NoPrimaryKeyException();
             }
-            string command = $"DELETE FROM `{table}` WHERE {primaryKey.SQLName}=@{prefix}_KEY;";
+            string command = $"DELETE FROM `{table}` WHERE {BuildSelector(primaryKeys, obj, out var prms, prefix)};";
 
             properties = new PropertyList();
-            properties.Add($"{prefix}_KEY", primaryKey.GetValue(obj));
+            properties.Add(prms);
 
             return command;
         }
@@ -304,18 +311,30 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             commandBuilder.AppendLine($"CREATE TABLE `{MySqlHelper.EscapeString(TableName)}` (");
             List<string> bodyParams = new List<string>();
             List<object> defaults = new List<object>();
+            var primaryKeys = new List<SQLBuildField>();
+
             foreach (SQLBuildField field in fields)
             {
                 bodyParams.Add($"    `{field.Name}` {field.SQLRepresentation} {(field.Null ? "NULL" : "NOT NULL")}{(field.Default != null ? $" DEFAULT @DEF{defaults.Count}" : "")}{(field.AutoIncrement ? " AUTO_INCREMENT" : "")}");
 
                 if (field.Default != null) defaults.Add(field.Default);
+                //if (field.PrimaryKey)
+                //    bodyParams.Add($"    PRIMARY KEY (`{field.Name}`)");
+
                 if (field.PrimaryKey)
-                    bodyParams.Add($"    PRIMARY KEY (`{field.Name}`)");
+                    primaryKeys.Add(field);
+
                 if (field.Unique)
                     bodyParams.Add($"    UNIQUE `{field.Name}_Unique` (`{field.Name}`)");
                 if (field.Indexed)
                     bodyParams.Add($"    INDEX `{field.Name}_INDEX` (`{field.Name}`)");
             }
+
+            if (primaryKeys.Any())
+            {
+                bodyParams.Add($"    PRIMARY KEY ({string.Join(", ", primaryKeys.Select(x => $"`{x.Name}`"))})");
+            }
+
             commandBuilder.AppendLine(string.Join(",\n", bodyParams));
             commandBuilder.Append($") ENGINE = {dbEngine};");
             MySqlCommand sqlCommand = (Connection != null ? new MySqlCommand(commandBuilder.ToString(), Connection) : new MySqlCommand(commandBuilder.ToString()));
@@ -323,6 +342,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             {
                 sqlCommand.Parameters.AddWithValue($"@DEF{defaults.IndexOf(def)}", def);
             }
+
             return sqlCommand;
         }
     }

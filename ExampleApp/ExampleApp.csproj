@@ -91,6 +91,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CompositesTable.cs" />
     <Compile Include="Database.cs" />
     <Compile Include="DatabaseModels.cs" />
     <Compile Include="PostsDatabaseTable.cs" />
