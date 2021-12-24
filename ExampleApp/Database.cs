@@ -1,4 +1,5 @@
-﻿using ShimmyMySherbet.MySQL.EF.Core;
+﻿using System.Dynamic;
+using ShimmyMySherbet.MySQL.EF.Core;
 using ShimmyMySherbet.MySQL.EF.Models;
 using ShimmyMySherbet.MySQL.EF.Models.Interfaces;
 
@@ -10,6 +11,8 @@ namespace ExampleApp
         public PostsDatabaseTable Posts { get; } = new PostsDatabaseTable("Posts");
 
         public CompositesTable Composites { get; } = new CompositesTable();
+
+        public UserTagsTable UserTags { get; } = new UserTagsTable();
 
         public Database(DatabaseSettings settings) : base(settings)
         {

@@ -288,9 +288,17 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                         Null = field.Meta.DBNull,
                         PrimaryKey = field.Meta.IsPrimaryKey,
                         Unique = field.Meta.Unique,
-                        Type = m_TypeHelper.GetSQLTypeIndexed(field.FieldType),
                         OverrideType = field.OverrideType
                     };
+
+                    if (field.OverrideType != null)
+                    {
+                        bField.Type = field.OverrideType;
+                    }  else
+                    {
+                        bField.Type = m_TypeHelper.GetSQLTypeIndexed(field.FieldType);
+                    }
+
 
                     var def = field.GetAttribute<SQLDefault>();
                     if (def != null)

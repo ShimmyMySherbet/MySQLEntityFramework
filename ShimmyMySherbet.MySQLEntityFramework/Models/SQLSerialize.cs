@@ -1,13 +1,19 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ShimmyMySherbet.MySQL.EF.Models
 {
-    public class SQLSerialize
+    public sealed class SQLSerialize : Attribute
     {
-        
+        public ESerializeFormat Format { get; }
+
+        public SQLSerialize()
+        {
+            Format = ESerializeFormat.JSON;
+        }
+
+        public SQLSerialize(ESerializeFormat fomat)
+        {
+            Format = fomat;
+        }
     }
 }

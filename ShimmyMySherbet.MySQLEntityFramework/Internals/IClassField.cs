@@ -1,4 +1,5 @@
-﻿using ShimmyMySherbet.MySQL.EF.Models.Internals;
+﻿using ShimmyMySherbet.MySQL.EF.Models;
+using ShimmyMySherbet.MySQL.EF.Models.Internals;
 using System;
 
 namespace ShimmyMySherbet.MySQL.EF.Internals

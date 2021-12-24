@@ -34,13 +34,22 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
         public override object GetValue(object instance)
         {
-            return m_info.GetValue(instance);
+            var value = m_info.GetValue(instance);
+            if (SerializeFormat != null)
+            {
+                value = SerializationProvider.Serialize(SerializeFormat.Value, value, FieldType);
+            }
+            return value;
         }
 
         public override void SetValue(object instance, object obj)
         {
             if (m_info.CanWrite)
             {
+                if (SerializeFormat != null)
+                {
+                    obj = SerializationProvider.Deserialize(SerializeFormat.Value, obj, FieldType);
+                }
                 m_info.SetValue(instance, obj);
             }
         }

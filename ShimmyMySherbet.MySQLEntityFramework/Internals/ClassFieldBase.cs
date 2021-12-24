@@ -1,11 +1,12 @@
-﻿using ShimmyMySherbet.MySQL.EF.Models.Internals;
-using System;
+﻿using System;
+using ShimmyMySherbet.MySQL.EF.Models;
+using ShimmyMySherbet.MySQL.EF.Models.Internals;
 
 namespace ShimmyMySherbet.MySQL.EF.Internals
 {
     public abstract class ClassFieldBase : IClassField
     {
-        public abstract string Name { get;  }
+        public abstract string Name { get; }
 
         public string SQLName
         {
@@ -49,16 +50,44 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             }
         }
 
+        private ESerializeFormat? m_format = null;
+        private bool m_checkedFormat = false;
+
+        public ESerializeFormat? SerializeFormat
+        {
+            get
+            {
+                if (!m_checkedFormat)
+                {
+                    m_checkedFormat = true;
+
+                    var ttr = GetAttribute<SQLSerialize>();
+                    if (ttr != null)
+                    {
+                        m_format = ttr.Format;
+                    }
+                }
+
+                return m_format;
+            }
+        }
+
         private SQLType m_OverrideType = null;
-        private bool m_HasOverride = false;
+        private bool m_CheckedOverideType = false;
 
         public SQLType OverrideType
         {
             get
             {
-                if (!m_HasOverride)
+                if (!m_CheckedOverideType)
                 {
+                    m_CheckedOverideType = true;
                     m_OverrideType = GetAttribute<SQLType>();
+
+                    if (m_OverrideType == null && SerializeFormat != null)
+                    {
+                        m_OverrideType = SerializationProvider.GetTypeFor(SerializeFormat.Value);
+                    }
                 }
                 return m_OverrideType;
             }

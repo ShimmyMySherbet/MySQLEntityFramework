@@ -2,6 +2,7 @@
 using ShimmyMySherbet.MySQL.EF.Models;
 using ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 
@@ -13,45 +14,69 @@ namespace ExampleApp
         {
             var settings = new DatabaseSettings("127.0.0.1", "TestDatabase", "kn8hSzrg2OVhTWHN", "test");
             var provider = new ThreadedConnectionProvider(settings);
-            var db = new Database(provider);
+            var dataabse = new Database(provider);
 
-            Console.WriteLine($"Connected: {db.Connect(out string fail)}");
+            Console.WriteLine($"Connected: {dataabse.Connect(out string fail)}");
             Console.WriteLine($"<>Status: {fail}");
-            db.CheckSchema();
-            db.AutoUpdateInstanceKey = true;
+            dataabse.CheckSchema();
+            dataabse.AutoUpdateInstanceKey = true;
 
 
-            var usrs = db.Composites.Query("SELECT * FROM @TABLE;");
 
-            foreach (var usr in usrs)
+            var tstOb = new CompositeTestObject()
             {
-                PrintUser(usr);
+                Active = DateTime.Now,
+                Class = "Staff",
+                Profile = "Info bout me",
+                ID = 0 // Don't have to set it to 0
+                // just to show it is 0 beforehand
+            };
+
+            dataabse.Composites.Insert(tstOb);
+
+            Console.WriteLine($"Class: {tstOb.Class}");
+            Console.WriteLine($"ID: {tstOb.ID}");
+
+            Console.ReadLine();
+
+            var allUserTags = dataabse.UserTags.Query("SELECT * FROM @TABLE;");
+            foreach (UserTags usr in allUserTags)
+            {
+                PrintUserTags(usr);
             }
-
-
 
             while (true)
             {
-                //Console.Write("User ID: ");
-                //var id = ulong.Parse(Console.ReadLine());
-                Console.Write("Class: ");
-                var cls = Console.ReadLine();
-
-                var desc = $"Class: {cls}. Local: {DateTime.Now.Ticks}";
-                var cr = DateTime.Now;
-
-                var newUser = new CompositeTestObject()
+                Console.Write("Name: ");
+                var username = Console.ReadLine();
+                Console.WriteLine("Tags:");
+                var tags = new List<string>();
+                while (true)
                 {
-                    Active = cr,
-                    Class = cls,
-                    Profile = desc
+                    var t = Console.ReadLine();
+                    if (string.IsNullOrEmpty(t))
+                        break;
+                    tags.Add(t);
+                }
+                var taguser = new UserTags()
+                {
+                    UserName = username,
+                    Tags = tags
                 };
 
-                db.Composites.Insert(newUser);
-                PrintUser(newUser);
+                dataabse.UserTags.Insert(taguser);
+                PrintUserTags(taguser);
             }
 
 
+        }
+
+        public static void PrintUserTags(UserTags ob)
+        {
+            Console.WriteLine($"Username: {ob.UserName}");
+            Console.WriteLine($"Tags:");
+            foreach(var t in ob.Tags)
+                Console.WriteLine($"  [Tag] {t}");
         }
 
         public static void PrintUser(CompositeTestObject User)

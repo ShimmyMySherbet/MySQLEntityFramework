@@ -8,4 +8,11 @@ namespace ExampleApp
         {
         }
     }
+
+    public class UserTagsTable : DatabaseTable<UserTags>
+    {
+        public UserTagsTable() : base("SertestTable")
+        {
+        }
+    }
 }
