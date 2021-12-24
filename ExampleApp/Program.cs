@@ -18,7 +18,7 @@ namespace ExampleApp
             Console.WriteLine($"Connected: {db.Connect(out string fail)}");
             Console.WriteLine($"<>Status: {fail}");
             db.CheckSchema();
-
+            db.AutoUpdateInstanceKey = true;
 
 
             var usrs = db.Composites.Query("SELECT * FROM @TABLE;");
@@ -34,17 +34,14 @@ namespace ExampleApp
             {
                 //Console.Write("User ID: ");
                 //var id = ulong.Parse(Console.ReadLine());
-                ulong id = 0;
                 Console.Write("Class: ");
                 var cls = Console.ReadLine();
 
-                var desc = $"User {id}; Class: {cls}. Local: {DateTime.Now.Ticks}";
-
+                var desc = $"Class: {cls}. Local: {DateTime.Now.Ticks}";
                 var cr = DateTime.Now;
 
                 var newUser = new CompositeTestObject()
                 {
-                    ID = id,
                     Active = cr,
                     Class = cls,
                     Profile = desc

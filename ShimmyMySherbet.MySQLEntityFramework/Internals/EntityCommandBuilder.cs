@@ -130,9 +130,9 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             return command;
         }
 
-        public static MySqlCommand BuildInsertCommand<T>(T obj, string table, MySqlConnection connection = null)
+        public static MySqlCommand BuildInsertCommand<T>(T obj, string table, out List<IClassField> fields, MySqlConnection connection = null)
         {
-            var fields = GetClassFields<T>(x => !x.ShouldOmit(obj));
+            fields = GetClassFields<T>(x => !x.ShouldOmit(obj));
             string command = $"INSERT INTO `{table}` ({string.Join(", ", fields.CastEnumeration(x => x.SQLName))}) VALUES ({string.Join(", ", fields.CastEnumeration(x => $"@{x.FieldIndex}"))});";
             MySqlCommand sqlCommand = (connection != null ? new MySqlCommand(command, connection) : new MySqlCommand(command));
             foreach (var field in fields)

@@ -1,9 +1,9 @@
-﻿using ShimmyMySherbet.MySQL.EF.Models;
-using ShimmyMySherbet.MySQL.EF.Models.Interfaces;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
+using ShimmyMySherbet.MySQL.EF.Models;
+using ShimmyMySherbet.MySQL.EF.Models.Interfaces;
 
 namespace ShimmyMySherbet.MySQL.EF.Core
 {
@@ -25,6 +25,16 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         public bool Connected => Client.Connected;
 
         private bool m_Inited = false;
+
+        /// <summary>
+        /// When enabled, numeric auto-increment primary key fields will be updated with the ID assigned to the new row when inserting.
+        /// This is still an experimental feature
+        /// </summary>
+        public bool AutoUpdateInstanceKey
+        {
+            get => Client.AutoUpdateInstanceKey;
+            set => Client.AutoUpdateInstanceKey = value;
+        }
 
         private List<IDatabaseTableInitializer> m_Initializers = new List<IDatabaseTableInitializer>();
 
@@ -98,7 +108,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
 
             foreach (var property in m_Class.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
             {
-                if ( property.CanRead && typeof(IDatabaseTableInitializer).IsAssignableFrom(property.PropertyType))
+                if (property.CanRead && typeof(IDatabaseTableInitializer).IsAssignableFrom(property.PropertyType))
                 {
                     var inst = property.GetValue(this);
                     if (inst != null && inst is IDatabaseTableInitializer init)
@@ -110,7 +120,6 @@ namespace ShimmyMySherbet.MySQL.EF.Core
 
             SendClientInstances();
         }
-
 
         public bool Connect()
         {

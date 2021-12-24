@@ -34,7 +34,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// When enabled, numeric auto-increment primary key fields will be updated with the ID assigned to the new row when inserting.
         /// This is still an experimental feature
         /// </summary>
-        public bool AutoUpdateInstanceID { get; set; } = false;
+        public bool AutoUpdateInstanceKey { get; set; } = false;
 
         /// <summary>
         /// </summary>
@@ -215,9 +215,19 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             {
                 lock (connection)
                 {
-                    using (MySqlCommand Command = EntityCommandBuilder.BuildInsertCommand<T>(Obj, Table, connection))
+                    using (MySqlCommand Command = EntityCommandBuilder.BuildInsertCommand<T>(Obj, Table, out var fields, connection))
                     {
                         Command.ExecuteNonQuery();
+
+                        if (AutoUpdateInstanceKey && Command.LastInsertedId != 0)
+                        {
+                            var field = fields.DetermineIDField();
+                            var value = field.GetValue(Obj);
+                            if (field != null && value.IsZero() && Command.LastInsertedId.TryConvertNumeric(field.FieldType, out var ins))
+                            {
+                                field.SetValue(Obj, ins);
+                            }
+                        }
                     }
                 }
             }
@@ -237,9 +247,18 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             var connection = await ConnectionProvider.GetConnectionAsync(forceNew: true);
             try
             {
-                using (MySqlCommand Command = EntityCommandBuilder.BuildInsertCommand<T>(Obj, Table, connection))
+                using (MySqlCommand Command = EntityCommandBuilder.BuildInsertCommand<T>(Obj, Table, out var fields, connection))
                 {
                     await Command.ExecuteNonQueryAsync();
+                    if (AutoUpdateInstanceKey && Command.LastInsertedId != 0)
+                    {
+                        var field = fields.DetermineIDField();
+                        var value = field.GetValue(Obj);
+                        if (field != null && value.IsZero() && Command.LastInsertedId.TryConvertNumeric(field.FieldType, out var ins))
+                        {
+                            field.SetValue(Obj, ins);
+                        }
+                    }
                 }
             }
             finally
