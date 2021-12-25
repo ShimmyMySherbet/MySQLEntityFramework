@@ -1,5 +1,8 @@
-﻿using System;
+﻿using System.ComponentModel;
+using System.Diagnostics;
+using System;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using ExampleApp.Database;
 using ExampleApp.Database.Models;
@@ -22,9 +25,11 @@ namespace ExampleApp
             Database = new DatabaseManager(provider);
 
             Console.WriteLine($"Connected: {Database.Connect(out string fail)}"); // try to connect to database
-            Console.WriteLine($"Error Message: {fail}"); // print user friendly error if failed
+            Console.WriteLine($"Status Message: {fail}"); // print user friendly error if failed
             Database.CheckSchema(); // Check Schema (ensure tables exist, if not, create them)
-            Database.AutoUpdateInstanceKey = true; // Auto update class auto increment primary key on insert
+            //Database.AutoUpdateInstanceKey = true; // Auto update class auto increment primary key on insert
+
+            RunConsole().GetAwaiter().GetResult();
         }
 
         private static async Task<ulong> CreateUser(string username, string email)
@@ -52,5 +57,92 @@ namespace ExampleApp
                 await Database.Permissions.InsertUpdateAsync(perms); // Update existing or Insert new row
             }
         }
+
+        #region "Test console code"
+
+        private static async Task RunConsole()
+        {
+            var converter = new StringConverter();
+            var sw = new Stopwatch();
+            while (true)
+            {
+                Console.ForegroundColor = ConsoleColor.Green; // fancy
+                Console.Write("  > ");
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                var command = Console.ReadLine();
+                var targetMethod = command.Split(' ')[0];
+                var arguments = command.Substring(targetMethod.Length + 1).Split(' ').ToArray();
+                Console.ForegroundColor = ConsoleColor.Red;
+                var mInfo = typeof(Program).GetMethod(targetMethod, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.IgnoreCase);
+
+                if (mInfo == null)
+                {
+                    Console.WriteLine("Command not found.");
+                    continue;
+                }
+
+                var mParam = mInfo.GetParameters();
+
+                var param = new object[mParam.Length];
+
+                if (arguments.Length < mParam.Length)
+                {
+                    Console.WriteLine($"Not enough arguments");
+                    continue;
+                }
+
+                for (int i = 0; i < param.Length; i++)
+                {
+                    if (!converter.CanConvertTo(mParam[i].ParameterType) && mParam[i].ParameterType != typeof(ulong))
+                    {
+                        Console.WriteLine($"Cant convert to {mParam[i].ParameterType.Name}");
+                        continue;
+                    }
+
+                    if (mParam[i].ParameterType == typeof(ulong))
+                    {
+                        param[i] = ulong.Parse(arguments[i]);
+                    }
+                    else
+                    {
+                        param[i] = converter.ConvertTo(arguments[i], mParam[i].ParameterType);
+                    }
+                }
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                sw.Restart();
+                var ret = mInfo.Invoke(null, param);
+                if (ret is Task tsk)
+                {
+                    await tsk;
+                    sw.Stop();
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine($"Finished Async in {Math.Round(sw.ElapsedTicks / 10000f, 4)}ms");
+
+                    // check if it's Type<T> with result
+                    var f_result = ret.GetType().GetProperty("Result", BindingFlags.Public | BindingFlags.Instance);
+                    if (f_result != null)
+                    {
+                        var rValue = f_result.GetValue(ret);
+                        Console.WriteLine($"Async Retun Value: {(rValue == null ? "null" : rValue)}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"No return value.");
+                    }
+                }
+                else
+                {
+                    sw.Stop();
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine($"Finished in {Math.Round(sw.ElapsedTicks / 10000f, 4)}ms");
+                    if (mInfo.ReturnType != typeof(void))
+                    {
+                        Console.WriteLine($"Retun Value: {(ret == null ? "null" : ret)}");
+                    }
+                }
+            }
+        }
+
+        #endregion "Test console code"
     }
 }
