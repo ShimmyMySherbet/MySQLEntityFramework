@@ -91,13 +91,16 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CompositesTable.cs" />
-    <Compile Include="Database.cs" />
-    <Compile Include="DatabaseModels.cs" />
-    <Compile Include="PostsDatabaseTable.cs" />
+    <Compile Include="Database\DatabaseManager.cs" />
+    <Compile Include="Database\Models\Permission.cs" />
+    <Compile Include="Database\Models\UserAccount.cs" />
+    <Compile Include="Database\Models\UserComment.cs" />
+    <Compile Include="Database\Models\UserPermissions.cs" />
+    <Compile Include="Database\Tables\PermissionsTable.cs" />
+    <Compile Include="Database\Tables\UserCommentsTable.cs" />
+    <Compile Include="Database\Tables\UsersTable.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="UserTags.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -109,5 +112,6 @@
       <Name>ShimmyMySherbet.MySQL.EF</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

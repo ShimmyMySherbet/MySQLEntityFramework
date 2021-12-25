@@ -1,91 +1,56 @@
-﻿using ShimmyMySherbet.MySQL.EF.Internals;
+﻿using System;
+using System.Linq;
+using System.Threading.Tasks;
+using ExampleApp.Database;
+using ExampleApp.Database.Models;
 using ShimmyMySherbet.MySQL.EF.Models;
 using ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Diagnostics;
 
 namespace ExampleApp
 {
     public class Program
     {
+        public static DatabaseManager Database;
+
         private static void Main(string[] args)
         {
+            // Can be used in serialized configs, e.g., rocket plugin config
             var settings = new DatabaseSettings("127.0.0.1", "TestDatabase", "kn8hSzrg2OVhTWHN", "test");
-            var provider = new ThreadedConnectionProvider(settings);
-            var dataabse = new Database(provider);
+            // Different providers change how connections are managed.
+            var provider = new SingleConnectionProvider(settings); // singleton provider
+            // Database manager class that contains tables
+            Database = new DatabaseManager(provider);
 
-            Console.WriteLine($"Connected: {dataabse.Connect(out string fail)}");
-            Console.WriteLine($"<>Status: {fail}");
-            dataabse.CheckSchema();
-            dataabse.AutoUpdateInstanceKey = true;
+            Console.WriteLine($"Connected: {Database.Connect(out string fail)}"); // try to connect to database
+            Console.WriteLine($"Error Message: {fail}"); // print user friendly error if failed
+            Database.CheckSchema(); // Check Schema (ensure tables exist, if not, create them)
+            Database.AutoUpdateInstanceKey = true; // Auto update class auto increment primary key on insert
+        }
 
-
-
-            var tstOb = new CompositeTestObject()
+        private static async Task<ulong> CreateUser(string username, string email)
+        {
+            var newUser = new UserAccount()
             {
-                Active = DateTime.Now,
-                Class = "Staff",
-                Profile = "Info bout me",
-                ID = 0 // Don't have to set it to 0
-                // just to show it is 0 beforehand
+                EmailAddress = email,
+                Username = username
             };
-
-            dataabse.Composites.Insert(tstOb);
-
-            Console.WriteLine($"Class: {tstOb.Class}");
-            Console.WriteLine($"ID: {tstOb.ID}");
-
-            Console.ReadLine();
-
-            var allUserTags = dataabse.UserTags.Query("SELECT * FROM @TABLE;");
-            foreach (UserTags usr in allUserTags)
-            {
-                PrintUserTags(usr);
-            }
-
-            while (true)
-            {
-                Console.Write("Name: ");
-                var username = Console.ReadLine();
-                Console.WriteLine("Tags:");
-                var tags = new List<string>();
-                while (true)
-                {
-                    var t = Console.ReadLine();
-                    if (string.IsNullOrEmpty(t))
-                        break;
-                    tags.Add(t);
-                }
-                var taguser = new UserTags()
-                {
-                    UserName = username,
-                    Tags = tags
-                };
-
-                dataabse.UserTags.Insert(taguser);
-                PrintUserTags(taguser);
-            }
-
-
+            await Database.Users.InsertAsync(newUser);
+            // return user ID as allocated by the database
+            return newUser.ID;
         }
 
-        public static void PrintUserTags(UserTags ob)
+        private static async Task GrantPermission(ulong userID, string permission, ulong granter)
         {
-            Console.WriteLine($"Username: {ob.UserName}");
-            Console.WriteLine($"Tags:");
-            foreach(var t in ob.Tags)
-                Console.WriteLine($"  [Tag] {t}");
-        }
+            // gets user perms from table, or creates new one if user does not have any perms
+            var perms = Database.Permissions.QuerySingle("SELECT * FROM @TABLE WHERE UserID=@0;", userID)
+                ?? new UserPermissions() { UserID = userID };
 
-        public static void PrintUser(CompositeTestObject User)
-        {
-            Console.WriteLine($"User ID: {User.ID}");
-            Console.WriteLine($"Class: {User.Class}");
-            Console.WriteLine($"Profile: {User.Profile}");
-            Console.WriteLine($"Active: {User.Active.ToShortDateString()}");
-            Console.WriteLine();
+            if (!perms.Permissions.Any(x => x.PermissionID == permission))
+            {
+                perms.Permissions.Add(new Permission() { PermissionID = permission, GrantedBy = granter });
+
+                await Database.Permissions.InsertUpdateAsync(perms); // Update existing or Insert new row
+            }
         }
     }
 }
