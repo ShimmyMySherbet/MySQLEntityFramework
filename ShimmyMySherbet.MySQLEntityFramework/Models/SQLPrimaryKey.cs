@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 
 namespace ShimmyMySherbet.MySQL.EF.Models
 {
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+
     public sealed class SQLPrimaryKey : Attribute
     {
     }

@@ -1,10 +1,12 @@
-﻿using MySql.Data.MySqlClient;
-using ShimmyMySherbet.MySQL.EF.Internals;
-using ShimmyMySherbet.MySQL.EF.Models;
-using ShimmyMySherbet.MySQL.EF.Models.TypeModel;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using MySql.Data.MySqlClient;
+using ShimmyMySherbet.MySQL.EF.Internals;
+using ShimmyMySherbet.MySQL.EF.Models;
+using ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders;
+using ShimmyMySherbet.MySQL.EF.Models.Interfaces;
+using ShimmyMySherbet.MySQL.EF.Models.TypeModel;
 
 namespace ShimmyMySherbet.MySQL.EF.Core
 {
@@ -13,25 +15,26 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <summary>
         /// The active connection when SingleConnection is enabled
         /// </summary>
-        public MySqlConnection ActiveConnection { get; protected set; }
+        //public MySqlConnection ActiveConnection { get; protected set; }
+
+        public IConnectionProvider ConnectionProvider { get; private set; }
 
         /// <summary>
         /// The connection string used when SingleConnection is disabled.
         /// </summary>
-        public string ConnectionString { get; set; }
+        public string ConnectionString => ConnectionProvider.ConnectionString;
 
         protected bool AutoDispose = true;
-
-        /// <summary>
-        /// Declares if a single connection should be used. If this is enabled, all actions will utilise a single connection. If the connection is in use, the methods will block untill it is available.
-        /// Enable this if you are just using this client on a single thread.
-        /// This parameter is set when creating an instance of MySQLEntityClient
-        /// </summary>
-        public bool ReuseSingleConnection { get; private set; }
 
         protected EntityCommandBuilder CommandBuilder = new EntityCommandBuilder();
         protected MySQLEntityReader Reader = new MySQLEntityReader();
         protected SQLTypeHelper IndexedTypeHelper = new SQLTypeHelper();
+
+        /// <summary>
+        /// When enabled, numeric auto-increment primary key fields will be updated with the ID assigned to the new row when inserting.
+        /// This is still an experimental feature
+        /// </summary>
+        public bool AutoUpdateInstanceKey { get; set; } = false;
 
         /// <summary>
         /// </summary>
@@ -41,27 +44,33 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// NOTE: If this is enabled, you need to call Connect()</param>
         public MySQLEntityClient(string ConnectionString, bool singleConnectionMode = true)
         {
-            this.ConnectionString = ConnectionString;
-            this.ReuseSingleConnection = singleConnectionMode;
+            if (singleConnectionMode)
+            {
+                ConnectionProvider = new SingleConnectionProvider(ConnectionString);
+            }
+            else
+            {
+                ConnectionProvider = new TransientConnectionProvider(ConnectionString);
+            }
+
             Reader.IndexedHelper = IndexedTypeHelper;
         }
 
         /// <summary>
-        /// If SingleConnection is enabled, returns the active connection. Otherwise returns a new connection.
+        /// Legacy proxy method for <seealso cref="ConnectionProvider"/>.GetConnection
         /// </summary>
         public MySqlConnection GetConnection(bool autoOpen = true, bool forceNew = false)
         {
-            if (ReuseSingleConnection && !forceNew)
-            {
-                return ActiveConnection;
-            }
-            else
-            {
-                var c = new MySqlConnection(ConnectionString);
-                if (autoOpen)
-                    c.Open();
-                return c;
-            }
+            return ConnectionProvider.GetConnection(autoOpen: autoOpen, forceNew: forceNew);
+        }
+
+        /// <summary>
+        /// Initializes a new instance of MySQLEntityClient using the specified connection provider
+        /// </summary>
+        /// <param name="connectionProvider"></param>
+        public MySQLEntityClient(IConnectionProvider connectionProvider)
+        {
+            ConnectionProvider = connectionProvider;
         }
 
         /// <summary>
@@ -71,9 +80,8 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <param name="autoDispose">Specifies if the connection should be disposed when the entity client is disposed.</param>
         public MySQLEntityClient(MySqlConnection connection, bool autoDispose = true)
         {
-            ReuseSingleConnection = true;
-            ActiveConnection = connection;
             AutoDispose = autoDispose;
+            ConnectionProvider = new SingleConnectionProvider(connection);
         }
 
         /// <summary>
@@ -88,8 +96,16 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// NOTE: If this is enabled, you need to call Connect()</param>
         public MySQLEntityClient(string Address, string Username, string Password = null, string Database = null, int Port = 3306, bool singleConnectionMode = true)
         {
-            ConnectionString = $"Server={Address};Uid={Username}{(Password != null ? $";Pwd={Password}" : "")}{(Database != null ? $";Database={Database}" : "")};Port={Port};";
-            this.ReuseSingleConnection = singleConnectionMode;
+            var connectionString = $"Server={Address};Uid={Username}{(Password != null ? $";Pwd={Password}" : "")}{(Database != null ? $";Database={Database}" : "")};Port={Port};";
+            if (singleConnectionMode)
+            {
+                ConnectionProvider = new SingleConnectionProvider(connectionString);
+            }
+            else
+            {
+                ConnectionProvider = new TransientConnectionProvider(connectionString);
+            }
+
             Reader.IndexedHelper = IndexedTypeHelper;
             AutoDispose = singleConnectionMode;
         }
@@ -98,7 +114,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// Initializes a new connection using the details provided in DatabaseSettings
         /// </summary>
         /// <param name="settings">Database connectio nsettings</param>
-        public MySQLEntityClient(DatabaseSettings settings, bool singleConnectionMode = true) : this(settings.DatabaseAddress, settings.DatabaseUsername, settings.DatabasePassword, settings.DatabaseName, settings.DatabasePort, singleConnectionMode)
+        public MySQLEntityClient(DatabaseSettings settings, bool singleConnectionMode = true) : this(settings.ToString(), singleConnectionMode)
         {
         }
 
@@ -109,19 +125,17 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         {
             get
             {
-                if (ReuseSingleConnection)
+                var connection = ConnectionProvider.GetConnection();
+                try
                 {
-                    lock (ActiveConnection)
+                    lock (connection)
                     {
-                        return ActiveConnection.Database;
+                        return connection.Database;
                     }
                 }
-                else
+                finally
                 {
-                    using (MySqlConnection Connection = GetConnection())
-                    {
-                        return Connection.Database;
-                    }
+                    ConnectionProvider.ReleaseConnection(connection);
                 }
             }
         }
@@ -130,29 +144,21 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// Only required for when ReuseSingleConnection is enabled.
         /// </summary>
         /// <returns>Connected</returns>
-        public bool Connect()
-        {
-            if (ReuseSingleConnection)
-            {
-                ActiveConnection = new MySqlConnection(ConnectionString);
-                return TryConnect(ActiveConnection);
-            }
-            else
-            {
-                using (var conn = GetConnection(autoOpen: false))
-                {
-                    return TryConnect(conn);
-                }
-            }
-        }
+        public bool Connect() => Connect(out string _);
 
-        /// <summary>
-        /// Only required for when ReuseSingleConnection is enabled.
-        /// </summary>
-        public MySQLEntityClient Connect(out bool connected)
+        public bool Connect(out string errorMessage)
         {
-            connected = Connect();
-            return this;
+            try
+            {
+                ConnectionProvider.Open();
+                errorMessage = "Connected.";
+                return true;
+            }
+            catch (MySqlException ex)
+            {
+                errorMessage = ex.Message;
+                return false;
+            }
         }
 
         /// <summary>
@@ -161,18 +167,24 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <returns>Connected</returns>
         public async Task<bool> ConnectAsync()
         {
-            if (ReuseSingleConnection)
+            try
             {
-                ActiveConnection = new MySqlConnection(ConnectionString);
-                return await TryConnectAsync(ActiveConnection);
-            } else
-            {
-                using(var conn = GetConnection(autoOpen: false))
-                {
-                    return await TryConnectAsync(conn);
-                }
+                await ConnectionProvider.OpenAsync();
+                return true;
             }
-            
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Only required for when ReuseSingleConnection is enabled.
+        /// </summary>
+        public MySQLEntityClient Connect(out bool connected, out string errorMessage)
+        {
+            connected = Connect(out errorMessage);
+            return this;
         }
 
         /// <summary>
@@ -180,10 +192,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// </summary>
         public void Disconnect()
         {
-            if (ReuseSingleConnection)
-            {
-                ActiveConnection.Close();
-            }
+            ConnectionProvider.Disconnect();
         }
 
         /// <summary>
@@ -191,10 +200,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// </summary>
         public async Task DisconnectAsync()
         {
-            if (ReuseSingleConnection)
-            {
-                await ActiveConnection.CloseAsync();
-            }
+            await ConnectionProvider.DisconnectAsync();
         }
 
         /// <summary>
@@ -204,26 +210,30 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <param name="Table">The table to create the object in</param>
         public void Insert<T>(T Obj, string Table)
         {
-            if (ReuseSingleConnection)
+            var connection = ConnectionProvider.GetConnection();
+            try
             {
-                lock (ActiveConnection)
+                lock (connection)
                 {
-                    using (MySqlCommand Command = EntityCommandBuilder.BuildInsertCommand<T>(Obj, Table, ActiveConnection))
+                    using (MySqlCommand Command = EntityCommandBuilder.BuildInsertCommand<T>(Obj, Table, out var fields, connection))
                     {
                         Command.ExecuteNonQuery();
+
+                        if (AutoUpdateInstanceKey && Command.LastInsertedId != 0)
+                        {
+                            var field = fields.DetermineIDField();
+                            var value = field.GetValue(Obj);
+                            if (field != null && value.IsZero() && Command.LastInsertedId.TryConvertNumeric(field.FieldType, out var ins))
+                            {
+                                field.SetValue(Obj, ins);
+                            }
+                        }
                     }
                 }
             }
-            else
+            finally
             {
-                using (MySqlConnection connection = GetConnection())
-                {
-                    connection.Open();
-                    using (MySqlCommand Command = EntityCommandBuilder.BuildInsertCommand<T>(Obj, Table, connection))
-                    {
-                        Command.ExecuteNonQuery();
-                    }
-                }
+                ConnectionProvider.ReleaseConnection(connection);
             }
         }
 
@@ -234,14 +244,26 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <param name="Table">The table to create the object in</param>
         public async Task InsertAsync<T>(T Obj, string Table)
         {
-            using (MySqlConnection connection = GetConnection(autoOpen: false, forceNew: true))
+            var connection = await ConnectionProvider.GetConnectionAsync(forceNew: true);
+            try
             {
-                await connection.OpenAsync();
-                using (MySqlCommand Command = EntityCommandBuilder.BuildInsertCommand<T>(Obj, Table, connection))
+                using (MySqlCommand Command = EntityCommandBuilder.BuildInsertCommand<T>(Obj, Table, out var fields, connection))
                 {
                     await Command.ExecuteNonQueryAsync();
+                    if (AutoUpdateInstanceKey && Command.LastInsertedId != 0)
+                    {
+                        var field = fields.DetermineIDField();
+                        var value = field.GetValue(Obj);
+                        if (field != null && value.IsZero() && Command.LastInsertedId.TryConvertNumeric(field.FieldType, out var ins))
+                        {
+                            field.SetValue(Obj, ins);
+                        }
+                    }
                 }
-                await connection.CloseAsync();
+            }
+            finally
+            {
+                await ConnectionProvider.ReleaseConnectionAsync(connection);
             }
         }
 
@@ -253,26 +275,20 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <param name="Table">The table to create the object in</param>
         public void InsertUpdate<T>(T Obj, string Table)
         {
-            if (ReuseSingleConnection)
+            var connection = ConnectionProvider.GetConnection();
+            try
             {
-                lock (ActiveConnection)
+                lock (connection)
                 {
-                    using (MySqlCommand Command = EntityCommandBuilder.BuildInsertUpdateCommand<T>(Obj, Table, ActiveConnection))
-                    {
-                        Command.ExecuteNonQuery();
-                    }
-                }
-            }
-            else
-            {
-                using (MySqlConnection connection = new MySqlConnection(ConnectionString))
-                {
-                    connection.Open();
                     using (MySqlCommand Command = EntityCommandBuilder.BuildInsertUpdateCommand<T>(Obj, Table, connection))
                     {
                         Command.ExecuteNonQuery();
                     }
                 }
+            }
+            finally
+            {
+                ConnectionProvider.ReleaseConnection(connection);
             }
         }
 
@@ -284,14 +300,17 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <param name="Table">The table to create the object in</param>
         public async Task InsertUpdateAsync<T>(T Obj, string Table)
         {
-            using (MySqlConnection connection = GetConnection(autoOpen: false, forceNew: true))
+            var connection = await ConnectionProvider.GetConnectionAsync(forceNew: true);
+            try
             {
-                await connection.OpenAsync();
                 using (MySqlCommand Command = EntityCommandBuilder.BuildInsertUpdateCommand<T>(Obj, Table, connection))
                 {
                     await Command.ExecuteNonQueryAsync();
                 }
-                await connection.CloseAsync();
+            }
+            finally
+            {
+                await ConnectionProvider.ReleaseConnectionAsync(connection);
             }
         }
 
@@ -302,25 +321,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         {
             get
             {
-                if (ReuseSingleConnection)
-                {
-                    lock (ActiveConnection)
-                    {
-                        return ActiveConnection.State == System.Data.ConnectionState.Open;
-                    }
-                }
-                else
-                {
-                    using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
-                    {
-                        if (!TryConnect(Connection)) return false;
-                        for (int i = 0; i < Connection.ConnectionTimeout; i += 100)
-                        {
-                            if (Connection.State == System.Data.ConnectionState.Open) return true;
-                        }
-                        return false;
-                    }
-                }
+                return ConnectionProvider.Connected;
             }
         }
 
@@ -329,26 +330,20 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// </summary>
         public void Delete<T>(T Obj, string Table)
         {
-            if (ReuseSingleConnection)
+            var connection = ConnectionProvider.GetConnection();
+            try
             {
-                lock (ActiveConnection)
+                lock (connection)
                 {
-                    using (MySqlCommand Command = EntityCommandBuilder.BuildDeleteCommand<T>(Obj, Table, ActiveConnection))
+                    using (MySqlCommand Command = EntityCommandBuilder.BuildDeleteCommand<T>(Obj, Table, connection))
                     {
                         Command.ExecuteNonQuery();
                     }
                 }
             }
-            else
+            finally
             {
-                using (MySqlConnection Connection = new MySqlConnection(ConnectionString))
-                {
-                    Connection.Open();
-                    using (MySqlCommand Command = EntityCommandBuilder.BuildDeleteCommand<T>(Obj, Table, Connection))
-                    {
-                        Command.ExecuteNonQuery();
-                    }
-                }
+                ConnectionProvider.ReleaseConnection(connection);
             }
         }
 
@@ -357,14 +352,17 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// </summary>
         public async Task DeleteAsync<T>(T Obj, string Table)
         {
-            using (MySqlConnection Connection = GetConnection(autoOpen: false, forceNew: true))
+            var connection = await ConnectionProvider.GetConnectionAsync();
+            try
             {
-                Connection.Open();
-                using (MySqlCommand Command = EntityCommandBuilder.BuildDeleteCommand<T>(Obj, Table, Connection))
+                using (MySqlCommand Command = EntityCommandBuilder.BuildDeleteCommand<T>(Obj, Table, connection))
                 {
                     await Command.ExecuteNonQueryAsync();
                 }
-                Connection.Close();
+            }
+            finally
+            {
+                await ConnectionProvider.ReleaseConnectionAsync(connection);
             }
         }
 
@@ -373,25 +371,20 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// </summary>
         public void CreateTable<T>(string TableName)
         {
-            if (ReuseSingleConnection)
+            var connection = ConnectionProvider.GetConnection();
+            try
             {
-                lock (ActiveConnection)
+                lock (connection)
                 {
-                    using (MySqlCommand Command = CommandBuilder.BuildCreateTableCommand<T>(TableName, ActiveConnection))
+                    using (MySqlCommand Command = CommandBuilder.BuildCreateTableCommand<T>(TableName, connection))
                     {
                         Command.ExecuteNonQuery();
                     }
                 }
             }
-            else
+            finally
             {
-                using (MySqlConnection Connection = GetConnection(autoOpen: true, forceNew: true))
-                {
-                    using (MySqlCommand Command = CommandBuilder.BuildCreateTableCommand<T>(TableName, Connection))
-                    {
-                        Command.ExecuteNonQuery();
-                    }
-                }
+                ConnectionProvider.ReleaseConnection(connection);
             }
         }
 
@@ -400,13 +393,17 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// </summary>
         public async Task CreateTableAsync<T>(string TableName)
         {
-            using (MySqlConnection Connection = GetConnection(autoOpen: false, forceNew: true))
+            var connection = await ConnectionProvider.GetConnectionAsync();
+            try
             {
-                await Connection.OpenAsync();
-                using (MySqlCommand Command = CommandBuilder.BuildCreateTableCommand<T>(TableName, Connection))
+                using (MySqlCommand Command = CommandBuilder.BuildCreateTableCommand<T>(TableName, connection))
                 {
                     await Command.ExecuteNonQueryAsync();
                 }
+            }
+            finally
+            {
+                await ConnectionProvider.ReleaseConnectionAsync(connection);
             }
         }
 
@@ -431,25 +428,20 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// </summary>
         public void Update<T>(T Obj, string Table)
         {
-            if (ReuseSingleConnection)
+            var connection = ConnectionProvider.GetConnection();
+            try
             {
-                lock (ActiveConnection)
+                lock (connection)
                 {
-                    using (MySqlCommand Command = EntityCommandBuilder.BuildUpdateCommand<T>(Obj, Table, ActiveConnection))
+                    using (MySqlCommand Command = EntityCommandBuilder.BuildUpdateCommand<T>(Obj, Table, connection))
                     {
                         Command.ExecuteNonQuery();
                     }
                 }
             }
-            else
+            finally
             {
-                using (MySqlConnection Connection = GetConnection(autoOpen: true, forceNew: true))
-                {
-                    using (MySqlCommand Command = EntityCommandBuilder.BuildUpdateCommand<T>(Obj, Table, Connection))
-                    {
-                        Command.ExecuteNonQuery();
-                    }
-                }
+                ConnectionProvider.ReleaseConnection(connection);
             }
         }
 
@@ -458,13 +450,17 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// </summary>
         public async Task UpdateAsync<T>(T Obj, string Table)
         {
-            using (MySqlConnection Connection = GetConnection(autoOpen: false, forceNew: true))
+            var connection = await ConnectionProvider.GetConnectionAsync();
+            try
             {
-                await Connection.OpenAsync();
-                using (MySqlCommand Command = EntityCommandBuilder.BuildUpdateCommand<T>(Obj, Table, Connection))
+                using (MySqlCommand Command = EntityCommandBuilder.BuildUpdateCommand<T>(Obj, Table, connection))
                 {
                     await Command.ExecuteNonQueryAsync();
                 }
+            }
+            finally
+            {
+                await ConnectionProvider.ReleaseConnectionAsync(connection);
             }
         }
 
@@ -475,95 +471,70 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <returns></returns>
         public bool TableExists(string Table)
         {
-            if (ReuseSingleConnection)
+            var connection = ConnectionProvider.GetConnection();
+            try
             {
-                lock (ActiveConnection)
+                lock (connection)
                 {
-                    using (MySqlCommand Command = EntityCommandBuilder.BuildCommand(ActiveConnection,
-                        "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = @0 AND TABLE_NAME = @1;", Database, Table))
+                    using (MySqlCommand Command = EntityCommandBuilder.BuildCommand(connection,
+                      "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = @0 AND TABLE_NAME = @1;", Database, Table))
                     using (MySqlDataReader Reader = Command.ExecuteReader())
                     {
                         return Reader.HasRows;
                     }
                 }
             }
-            else
+            finally
             {
-                using (MySqlConnection Connection = GetConnection(autoOpen: true, forceNew: true))
-                {
-                    using (MySqlCommand Command = EntityCommandBuilder.BuildCommand(Connection,
-                        "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = @0 AND TABLE_NAME = @1;", Database, Table))
-                    using (MySqlDataReader Reader = Command.ExecuteReader())
-                    {
-                        return Reader.HasRows;
-                    }
-                }
+                ConnectionProvider.ReleaseConnection(connection);
             }
         }
 
         public void DeleteTable(string Table)
         {
-            if (ReuseSingleConnection)
+            var connection = ConnectionProvider.GetConnection();
+            try
             {
-                lock (ActiveConnection)
+                lock (connection)
                 {
-                    using (MySqlCommand Command = EntityCommandBuilder.BuildCommand(ActiveConnection, $"DROP TABLE `{Table.Replace("`", "``")}`"))
+                    using (MySqlCommand Command = EntityCommandBuilder.BuildCommand(connection, $"DROP TABLE `{Table.Replace("`", "``")}`"))
                     {
                         Command.ExecuteNonQuery();
                     }
                 }
             }
-            else
+            finally
             {
-                using (MySqlConnection Connection = GetConnection(autoOpen: true, forceNew: true))
-                {
-                    using (MySqlCommand Command = EntityCommandBuilder.BuildCommand(Connection, $"DROP TABLE `{Table.Replace("`", "``")}`"))
-                    {
-                        Command.ExecuteNonQuery();
-                    }
-                }
+                ConnectionProvider.ReleaseConnection(connection);
             }
         }
 
         public async Task DeleteTableAsync(string Table)
         {
-            using (MySqlConnection Connection = GetConnection(autoOpen: false, forceNew: true))
+            var connection = await ConnectionProvider.GetConnectionAsync();
+            try
             {
-                await Connection.OpenAsync();
-                using (MySqlCommand Command = EntityCommandBuilder.BuildCommand(Connection, "DROP TABLE @0", Table))
+                using (MySqlCommand Command = EntityCommandBuilder.BuildCommand(connection, $"DROP TABLE `{Table.Replace("`", "``")}`"))
                 {
                     await Command.ExecuteNonQueryAsync();
                 }
-                await Connection.CloseAsync();
+            }
+            finally
+            {
+                await ConnectionProvider.ReleaseConnectionAsync(connection);
             }
         }
 
+        [Obsolete]
         private bool TryConnect(MySqlConnection connection)
         {
-            if (connection.State == System.Data.ConnectionState.Open) return true;
-            try
-            {
-                connection.Open();
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-            return true;
+            return false;
         }
 
-        private async Task<bool> TryConnectAsync(MySqlConnection connection)
+        [Obsolete]
+        private Task<bool> TryConnectAsync(MySqlConnection connection)
         {
-            if (connection.State == System.Data.ConnectionState.Open || ActiveConnection == null) return true;
-            try
-            {
-                await connection.OpenAsync();
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-            return true;
+            return Task.FromResult(true);
         }
 
         /// <summary>
@@ -575,19 +546,17 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <returns>Results from query</returns>
         public List<T> Query<T>(string Command, params object[] Parameters)
         {
-            if (ReuseSingleConnection)
+            var connection = ConnectionProvider.GetConnection();
+            try
             {
-                lock (ActiveConnection)
+                lock (connection)
                 {
-                    return Reader.RetriveFromDatabase<T>(ActiveConnection, Command, Parameters);
+                    return Reader.RetriveFromDatabase<T>(connection, Command, Parameters);
                 }
             }
-            else
+            finally
             {
-                using (MySqlConnection Connection = GetConnection(autoOpen: true, forceNew: true))
-                {
-                    return Reader.RetriveFromDatabase<T>(Connection, Command, Parameters);
-                }
+                ConnectionProvider.ReleaseConnection(connection);
             }
         }
 
@@ -600,12 +569,14 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <returns>Results from query</returns>
         public async Task<List<T>> QueryAsync<T>(string Command, params object[] Parameters)
         {
-            using (MySqlConnection Connection = GetConnection(autoOpen: false, forceNew: true))
+            var connection = await ConnectionProvider.GetConnectionAsync();
+            try
             {
-                await Connection.OpenAsync();
-                var value = await Reader.RetriveFromDatabaseAsync<T>(Connection, Command, Parameters);
-                await Connection.CloseAsync();
-                return value;
+                return await Reader.RetriveFromDatabaseAsync<T>(connection, Command, Parameters);
+            }
+            finally
+            {
+                await ConnectionProvider.ReleaseConnectionAsync(connection);
             }
         }
 
@@ -617,11 +588,12 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <returns>First result, or null if no results.</returns>
         public T QuerySingle<T>(string Command, params object[] Parameters)
         {
-            if (ReuseSingleConnection)
+            var connection = ConnectionProvider.GetConnection();
+            try
             {
-                lock (ActiveConnection)
+                lock (connection)
                 {
-                    List<T> Results = Reader.RetriveFromDatabaseCapped<T>(ActiveConnection, 1, Command, Parameters);
+                    List<T> Results = Reader.RetriveFromDatabaseCapped<T>(connection, 1, Command, Parameters);
                     if (Results.Count != 0)
                     {
                         return Results[0];
@@ -632,20 +604,9 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                     }
                 }
             }
-            else
+            finally
             {
-                using (MySqlConnection Connection = GetConnection(autoOpen: true, forceNew: true))
-                {
-                    List<T> Results = Reader.RetriveFromDatabaseCapped<T>(Connection, 1, Command, Parameters);
-                    if (Results.Count != 0)
-                    {
-                        return Results[0];
-                    }
-                    else
-                    {
-                        return default;
-                    }
-                }
+                ConnectionProvider.ReleaseConnection(connection);
             }
         }
 
@@ -657,10 +618,10 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <returns>First result, or null if no results.</returns>
         public async Task<T> QuerySingleAsync<T>(string Command, params object[] Parameters)
         {
-            using (MySqlConnection Connection = GetConnection(autoOpen: false, forceNew: true))
+            var connection = await ConnectionProvider.GetConnectionAsync();
+            try
             {
-                await Connection.OpenAsync();
-                List<T> Results = await Reader.RetriveFromDatabaseCappedAsync<T>(Connection, 1, Command, Parameters);
+                List<T> Results = await Reader.RetriveFromDatabaseCappedAsync<T>(connection, 1, Command, Parameters);
                 if (Results.Count != 0)
                 {
                     return Results[0];
@@ -670,50 +631,50 @@ namespace ShimmyMySherbet.MySQL.EF.Core
                     return default;
                 }
             }
+            finally
+            {
+                await ConnectionProvider.ReleaseConnectionAsync(connection);
+            }
         }
 
         public int ExecuteNonQuery(string Command, params object[] Parameters)
         {
-            if (ReuseSingleConnection)
+            var connection = ConnectionProvider.GetConnection();
+            try
             {
-                lock (ActiveConnection)
+                lock (connection)
                 {
-                    using (MySqlCommand command = EntityCommandBuilder.BuildCommand(ActiveConnection, Command, Parameters))
+                    using (MySqlCommand command = EntityCommandBuilder.BuildCommand(connection, Command, Parameters))
                     {
                         return command.ExecuteNonQuery();
                     }
                 }
             }
-            else
+            finally
             {
-                using (MySqlConnection Connection = GetConnection(autoOpen: true, forceNew: true))
-                {
-                    using (MySqlCommand command = EntityCommandBuilder.BuildCommand(Connection, Command, Parameters))
-                    {
-                        return command.ExecuteNonQuery();
-                    }
-                }
+                ConnectionProvider.ReleaseConnection(connection);
             }
         }
 
         public async Task<int> ExecuteNonQueryAsync(string Command, params object[] Parameters)
         {
-            using (MySqlConnection Connection = GetConnection(autoOpen: false, forceNew: true))
+            var connection = await ConnectionProvider.GetConnectionAsync();
+            try
             {
-                await Connection.OpenAsync();
-                using (MySqlCommand command = EntityCommandBuilder.BuildCommand(Connection, Command, Parameters))
+                using (MySqlCommand command = EntityCommandBuilder.BuildCommand(connection, Command, Parameters))
                 {
                     return await command.ExecuteNonQueryAsync();
                 }
+            }
+            finally
+            {
+                await ConnectionProvider.ReleaseConnectionAsync(connection);
             }
         }
 
         public void Dispose()
         {
-            if (AutoDispose && ActiveConnection != null)
-            {
-                ActiveConnection.Dispose();
-            }
+            ConnectionProvider.Dispose();
         }
     }
 }

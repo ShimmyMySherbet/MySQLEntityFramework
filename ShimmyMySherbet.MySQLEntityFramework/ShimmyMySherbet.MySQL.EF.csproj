@@ -1,20 +1,22 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <Description>A lightweight .NET MySQL Wrapper and Entity Framework.</Description>
+    <TargetFrameworks>netstandard2.0;net48;net5</TargetFrameworks>
+    <Description>A lightweight high-performance .NET MySQL Wrapper and Entity Framework. Designed to make working with a MySQL database as easy as possible</Description>
     <Copyright></Copyright>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/ShimmyMySherbet/MySQLEntityFramework</RepositoryUrl>
     <PackageTags>MySQL Wrapper EntityFramework</PackageTags>
     <NeutralLanguage>en</NeutralLanguage>
-    <PackageReleaseNotes>Added DatabaseClient and DatabaseTable&lt;T&gt;</PackageReleaseNotes>
-    <Version>1.5.5</Version>
+    <PackageReleaseNotes></PackageReleaseNotes>
+    <Version>1.6.7</Version>
     <PackageProjectUrl>https://github.com/ShimmyMySherbet/MySQLEntityFramework</PackageProjectUrl>
+    <AssemblyVersion>1.6.7.0</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="MySql.Data" Version="8.0.21" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
   </ItemGroup>
 
 </Project>

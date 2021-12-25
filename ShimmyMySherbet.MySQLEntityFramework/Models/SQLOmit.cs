@@ -9,6 +9,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models
     /// <summary>
     /// Omits the field on insert and update
     /// </summary>
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public sealed class SQLOmit : Attribute
     {
     }

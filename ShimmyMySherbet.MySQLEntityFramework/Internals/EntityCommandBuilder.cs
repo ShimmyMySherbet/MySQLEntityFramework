@@ -1,13 +1,14 @@
-﻿using MySql.Data.MySqlClient;
-using ShimmyMySherbet.MySQL.EF.Models;
-using ShimmyMySherbet.MySQL.EF.Models.Exceptions;
-using ShimmyMySherbet.MySQL.EF.Models.Internals;
-using ShimmyMySherbet.MySQL.EF.Models.TypeModel;
-using System;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using MySql.Data.MySqlClient;
+using ShimmyMySherbet.MySQL.EF.Models;
+using ShimmyMySherbet.MySQL.EF.Models.Exceptions;
+using ShimmyMySherbet.MySQL.EF.Models.Internals;
+using ShimmyMySherbet.MySQL.EF.Models.TypeModel;
 
 #pragma warning disable CA2100
 
@@ -16,6 +17,77 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
     public class EntityCommandBuilder
     {
         private SQLTypeHelper m_TypeHelper = new SQLTypeHelper();
+
+        private static IDictionary<Type, List<IClassField>> m_FieldCache = new ConcurrentDictionary<Type, List<IClassField>>();
+
+        private static bool m_CacheEnabled { get; set; } = true;
+
+        /// <summary>
+        /// Toggles the use of cached class models that represent a type's fields and properties for SQL methods.
+        /// </summary>
+        public static void SetCacheEnabled(bool enabled)
+        {
+            m_CacheEnabled = enabled;
+        }
+
+        internal static List<IClassField> GetClassFields(Type model)
+        {
+            if (model == null)
+            {
+                throw new ArgumentNullException("model");
+            }
+
+            if (m_CacheEnabled)
+            {
+                if (m_FieldCache == null)
+                {
+                    m_FieldCache = new ConcurrentDictionary<Type, List<IClassField>>();
+                }
+                else if (m_FieldCache.ContainsKey(model))
+                {
+                    return m_FieldCache[model];
+                }
+            }
+
+            var fields = new List<IClassField>();
+            var index = 0;
+
+            foreach (var field in model.GetFields())
+            {
+                var f = new ClassField(field, index);
+
+                if (!f.Meta.Ignore)
+                {
+                    index++;
+                    fields.Add(f);
+                }
+            }
+
+            if (model.GetCustomAttribute<SQLIngoreProperties>() == null)
+            {
+                foreach (var property in model.GetProperties())
+                {
+                    var p = new ClassProperty(property, index);
+
+                    if (!p.Meta.Ignore)
+                    {
+                        index++;
+                        fields.Add(p);
+                    }
+                }
+            }
+
+            if (m_CacheEnabled)
+            {
+                m_FieldCache[model] = fields;
+            }
+
+            return fields;
+        }
+
+        internal static List<IClassField> GetClassFields<T>() => GetClassFields(typeof(T));
+
+        internal static List<IClassField> GetClassFields<T>(Func<IClassField, bool> selector) => GetClassFields(typeof(T)).Where(selector).ToList();
 
         public static MySqlCommand BuildCommand(string command, params object[] args)
         {
@@ -58,328 +130,138 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             return command;
         }
 
-        public static MySqlCommand BuildInsertCommand<T>(T obj, string table, MySqlConnection connection = null)
+        public static MySqlCommand BuildInsertCommand<T>(T obj, string table, out List<IClassField> fields, MySqlConnection connection = null)
         {
-            List<SQLMetaField> sqlMetas = new List<SQLMetaField>();
-            foreach (FieldInfo field in typeof(T).GetFields())
-            {
-                bool include = true;
-                string name = field.Name;
-                foreach (Attribute attrib in Attribute.GetCustomAttributes(field))
-                {
-                    if (attrib is SQLOmit || attrib is SQLIgnore)
-                    {
-                        include = false;
-                        break;
-                    }
-                    else if (attrib is SQLPropertyName)
-                    {
-                        name = ((SQLPropertyName)attrib).Name;
-                    }
-                }
-                if (include)
-                {
-                    if (sqlMetas.Where(x => string.Equals(x.Name, name, StringComparison.InvariantCultureIgnoreCase)).Count() != 0) continue;
-                    sqlMetas.Add(new SQLMetaField(name, sqlMetas.Count, field));
-                }
-            }
-            string command = $"INSERT INTO `{table}` ({string.Join(", ", sqlMetas.CastEnumeration(x => x.Name))}) VALUES ({string.Join(", ", sqlMetas.CastEnumeration(x => $"@{x.Index}"))});";
+            fields = GetClassFields<T>(x => !x.ShouldOmit(obj));
+            string command = $"INSERT INTO `{table}` ({string.Join(", ", fields.CastEnumeration(x => x.SQLName))}) VALUES ({string.Join(", ", fields.CastEnumeration(x => $"@{x.FieldIndex}"))});";
             MySqlCommand sqlCommand = (connection != null ? new MySqlCommand(command, connection) : new MySqlCommand(command));
-            foreach (SQLMetaField meta in sqlMetas)
-                sqlCommand.Parameters.AddWithValue($"@{meta.Index}", meta.Field.GetValue(obj));
+            foreach (var field in fields)
+                sqlCommand.Parameters.AddWithValue($"@{field.FieldIndex}", field.GetValue(obj));
             return sqlCommand;
         }
 
         public static string BuildInsertCommandContent<T>(T obj, string table, int prefix, out PropertyList properties)
         {
-            List<SQLMetaField> sqlMetas = new List<SQLMetaField>();
-            foreach (FieldInfo field in typeof(T).GetFields())
-            {
-                bool include = true;
-                string name = field.Name;
-                foreach (Attribute attrib in Attribute.GetCustomAttributes(field))
-                {
-                    if (attrib is SQLOmit || attrib is SQLIgnore)
-                    {
-                        include = false;
-                        break;
-                    }
-                    else if (attrib is SQLPropertyName)
-                    {
-                        name = ((SQLPropertyName)attrib).Name;
-                    }
-                }
-                if (include)
-                {
-                    if (sqlMetas.Where(x => string.Equals(x.Name, name, StringComparison.InvariantCultureIgnoreCase)).Count() != 0) continue;
-                    sqlMetas.Add(new SQLMetaField(name, sqlMetas.Count, field));
-                }
-            }
-            string command = $"INSERT INTO `{table}` ({string.Join(", ", sqlMetas.CastEnumeration(x => x.Name))}) VALUES ({string.Join(", ", sqlMetas.CastEnumeration(x => $"@{prefix}_{x.Index}"))});";
+            var fields = GetClassFields<T>(x => !x.ShouldOmit(obj));
+
+            string command = $"INSERT INTO `{table}` ({string.Join(", ", fields.CastEnumeration(x => x.SQLName))}) VALUES ({string.Join(", ", fields.CastEnumeration(x => $"@{prefix}_{x.FieldIndex}"))});";
 
             properties = new PropertyList();
-            foreach (SQLMetaField meta in sqlMetas)
-                properties.Add($"@{prefix}_{meta.Index}", meta.Field.GetValue(obj));
+            foreach (var meta in fields)
+                properties.Add($"@{prefix}_{meta.FieldIndex}", meta.GetValue(obj));
             return command;
         }
 
         public static MySqlCommand BuildInsertUpdateCommand<T>(T obj, string table, MySqlConnection Connection = null)
         {
-            List<SQLMetaField> sqlMetas = new List<SQLMetaField>();
-            foreach (FieldInfo field in typeof(T).GetFields())
-            {
-                bool include = true;
-                string Name = field.Name;
-                bool omitUpdate = false;
-                foreach (Attribute attrib in Attribute.GetCustomAttributes(field))
-                {
-                    if (attrib is SQLOmit || attrib is SQLIgnore)
-                    {
-                        include = false;
-                        break;
-                    }
-                    else if (attrib is SQLPropertyName)
-                    {
-                        Name = ((SQLPropertyName)attrib).Name;
-                    }
-                    else if (attrib is SQLOmitUpdate)
-                    {
-                        omitUpdate = true;
-                    }
-                }
-                if (include)
-                {
-                    if (sqlMetas.Where(x => string.Equals(x.Name, Name, StringComparison.InvariantCultureIgnoreCase)).Count() != 0) continue;
-                    sqlMetas.Add(new SQLMetaField(Name, sqlMetas.Count, field, omitUpdate));
-                }
-            }
-            string command = $"INSERT INTO `{table}` ({string.Join(", ", sqlMetas.CastEnumeration(x => x.Name))}) VALUES ({string.Join(", ", sqlMetas.CastEnumeration(x => $"@{x.Index}"))}) ON DUPLICATE KEY UPDATE {string.Join(", ", sqlMetas.Where(x => !x.OmitUpdate).Select(x => $"`{x.Name}`=@{x.Index}"))};";
+            var fields = GetClassFields<T>(x => !x.ShouldOmit(obj));
+
+            bool hasUpdatable = fields.Any(x => !x.Meta.OmitOnUpdate);
+
+            string command = $"INSERT INTO `{table}` ({string.Join(", ", fields.CastEnumeration(x => x.SQLName))}) VALUES ({string.Join(", ", fields.CastEnumeration(x => $"@{x.FieldIndex}"))}) {(!hasUpdatable ? "" : $"ON DUPLICATE KEY UPDATE {string.Join(", ", fields.Where(x => !x.Meta.OmitOnUpdate).Select(x => $"`{x.Name}`=@{x.FieldIndex}"))};")};";
             MySqlCommand sqlCommand = (Connection != null ? new MySqlCommand(command, Connection) : new MySqlCommand(command));
-            foreach (SQLMetaField meta in sqlMetas)
-                sqlCommand.Parameters.AddWithValue($"@{meta.Index}", meta.Field.GetValue(obj));
+            foreach (var meta in fields)
+                sqlCommand.Parameters.AddWithValue($"@{meta.FieldIndex}", meta.GetValue(obj));
             return sqlCommand;
         }
 
         public static string BuildInsertUpdateCommandContent<T>(T obj, string table, int prefix, out PropertyList properties)
         {
-            List<SQLMetaField> sqlMetas = new List<SQLMetaField>();
-            foreach (FieldInfo field in typeof(T).GetFields())
-            {
-                bool include = true;
-                string name = field.Name;
-                bool omitUpdate = false;
-                foreach (Attribute attrib in Attribute.GetCustomAttributes(field))
-                {
-                    if (attrib is SQLOmit || attrib is SQLIgnore)
-                    {
-                        include = false;
-                        break;
-                    }
-                    else if (attrib is SQLPropertyName)
-                    {
-                        name = ((SQLPropertyName)attrib).Name;
-                    }
-                    else if (attrib is SQLOmitUpdate)
-                    {
-                        omitUpdate = true;
-                    }
-                }
-                if (include)
-                {
-                    if (sqlMetas.Where(x => string.Equals(x.Name, name, StringComparison.InvariantCultureIgnoreCase)).Count() != 0) continue;
-                    sqlMetas.Add(new SQLMetaField(name, sqlMetas.Count, field, omitUpdate));
-                }
-            }
-            string command = $"INSERT INTO `{table}` ({string.Join(", ", sqlMetas.CastEnumeration(x => x.Name))}) VALUES ({string.Join(", ", sqlMetas.CastEnumeration(x => $"@{x.Index}"))}) ON DUPLICATE KEY UPDATE {string.Join(", ", sqlMetas.Where(x => !x.OmitUpdate).Select(x => $"`{x.Name}`=@{x.Index}"))};";
+            var fields = GetClassFields<T>(x => !x.ShouldOmit(obj));
+            bool hasUpdatable = fields.Any(x => !x.Meta.OmitOnUpdate);
+
+            string command = $"INSERT INTO `{table}` ({string.Join(", ", fields.CastEnumeration(x => x.SQLName))}) VALUES ({string.Join(", ", fields.CastEnumeration(x => $"@{x.FieldIndex}"))}) {(!hasUpdatable ? "" : $"ON DUPLICATE KEY UPDATE {string.Join(", ", fields.Where(x => !x.Meta.OmitOnUpdate).Select(x => $"`{x.Name}`=@{x.FieldIndex}"))};")};";
             properties = new PropertyList();
-            foreach (SQLMetaField meta in sqlMetas)
-                properties.Add($"@{prefix}_{meta.Index}", meta.Field.GetValue(obj));
+            foreach (var meta in fields)
+                properties.Add($"@{prefix}_{meta.FieldIndex}", meta.GetValue(obj));
             return command;
+        }
+
+        internal static string BuildSelector(IEnumerable<IClassField> primaryKeys, object instance, out ParamObject[] parameters, int? prefix = null)
+        {
+            var count = primaryKeys.Count();
+            parameters = new ParamObject[count];
+            var selections = new string[count];
+            for (int i = 0; i < count; i++)
+            {
+                var key = primaryKeys.ElementAt(i);
+                selections[i] = $"{key.SQLName}=@{(prefix != null ? $"{prefix}_" : "")}KEY{i}";
+                parameters[i] = new ParamObject($"@{(prefix != null ? $"{prefix}_" : "")}KEY{i}", key.GetValue(instance));
+            }
+
+            return string.Join(" AND ", selections);
         }
 
         public static MySqlCommand BuildUpdateCommand<T>(T obj, string table, MySqlConnection connection = null)
         {
-            List<SQLMetaField> sqlMetas = new List<SQLMetaField>();
-            SQLMetaField primaryKey = null;
-            foreach (FieldInfo field in typeof(T).GetFields())
+            var fields = GetClassFields<T>(x => !x.ShouldOmit(obj) && !x.Meta.OmitOnUpdate);
+
+            var primaryKeys = fields.Where(x => x.Meta.IsPrimaryKey);
+
+            if (!primaryKeys.Any())
             {
-                bool include = true;
-                string Name = field.Name;
-                bool omitUpdate = false;
-                bool isPrimary = Attribute.IsDefined(field, typeof(SQLPrimaryKey));
-                foreach (Attribute Attrib in Attribute.GetCustomAttributes(field))
-                {
-                    if ((Attrib is SQLOmit && !isPrimary) || Attrib is SQLIgnore)
-                    {
-                        include = false;
-                        break;
-                    }
-                    else if (Attrib is SQLPropertyName)
-                    {
-                        Name = ((SQLPropertyName)Attrib).Name;
-                    }
-                    else if (Attrib is SQLOmitUpdate)
-                    {
-                        omitUpdate = true;
-                    }
-                }
-                if (include)
-                {
-                    SQLMetaField meta = new SQLMetaField(Name, sqlMetas.Count, field, omitUpdate);
-                    if (isPrimary)
-                    {
-                        primaryKey = meta;
-                        foreach (SQLMetaField SubMeta in sqlMetas.Where(x => string.Equals(x.Name, meta.Name, StringComparison.InvariantCultureIgnoreCase)))
-                        {
-                            sqlMetas.Remove(SubMeta);
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        if (sqlMetas.Where(x => string.Equals(x.Name, Name, StringComparison.InvariantCultureIgnoreCase)).Count() != 0) continue;
-                        sqlMetas.Add(new SQLMetaField(Name, sqlMetas.Count, field));
-                    }
-                }
+                throw new NoPrimaryKeyException();
             }
-            sqlMetas.RemoveAll(x => x.OmitUpdate);
-            if (primaryKey == null) throw new NoPrimaryKeyException();
-            string Command = $"UPDATE `{table}` SET {string.Join(", ", sqlMetas.CastEnumeration(x => $"{x.Name}=@{x.Index}"))} WHERE {primaryKey.Name}=@KEY;";
+
+            string Command = $"UPDATE `{table}` SET {string.Join(", ", fields.CastEnumeration(x => $"{x.SQLName}=@{x.FieldIndex}"))} WHERE {BuildSelector(primaryKeys, obj, out var prm)};";
             MySqlCommand sqlCommand = (connection != null ? new MySqlCommand(Command, connection) : new MySqlCommand(Command));
-            sqlCommand.Parameters.AddWithValue("@KEY", primaryKey.Field.GetValue(obj));
-            foreach (SQLMetaField meta in sqlMetas)
-                sqlCommand.Parameters.AddWithValue($"@{meta.Index}", meta.Field.GetValue(obj));
+            sqlCommand.Add(prm);
+            foreach (var meta in fields)
+                sqlCommand.Parameters.AddWithValue($"@{meta.FieldIndex}", meta.GetValue(obj));
             return sqlCommand;
         }
 
         public static string BuildUpdateCommandContent<T>(T obj, string table, int prefix, out PropertyList properties)
         {
-            List<SQLMetaField> sqlMetas = new List<SQLMetaField>();
-            SQLMetaField primaryKey = null;
-            foreach (FieldInfo field in typeof(T).GetFields())
-            {
-                bool include = true;
-                string name = field.Name;
-                bool omitUpdate = false;
-                bool isPrimary = Attribute.IsDefined(field, typeof(SQLPrimaryKey));
-                foreach (Attribute attrib in Attribute.GetCustomAttributes(field))
-                {
-                    if ((attrib is SQLOmit && !isPrimary) || attrib is SQLIgnore)
-                    {
-                        include = false;
-                        break;
-                    }
-                    else if (attrib is SQLPropertyName)
-                    {
-                        name = ((SQLPropertyName)attrib).Name;
-                    }
-                    else if (attrib is SQLOmitUpdate)
-                    {
-                        omitUpdate = true;
-                    }
-                }
-                if (include)
-                {
-                    SQLMetaField meta = new SQLMetaField(name, sqlMetas.Count, field, omitUpdate);
-                    if (isPrimary)
-                    {
-                        primaryKey = meta;
-                        foreach (SQLMetaField SubMeta in sqlMetas.Where(x => string.Equals(x.Name, meta.Name, StringComparison.InvariantCultureIgnoreCase)))
-                        {
-                            sqlMetas.Remove(SubMeta);
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        if (sqlMetas.Where(x => string.Equals(x.Name, name, StringComparison.InvariantCultureIgnoreCase)).Count() != 0) continue;
-                        sqlMetas.Add(new SQLMetaField(name, sqlMetas.Count, field));
-                    }
-                }
-            }
-            sqlMetas.RemoveAll(x => x.OmitUpdate);
-            if (primaryKey == null) throw new NoPrimaryKeyException();
-            string command = $"UPDATE `{table}` SET {string.Join(", ", sqlMetas.CastEnumeration(x => $"{x.Name}=@{x.Index}"))} WHERE {primaryKey.Name}=@KEY;";
-            properties = new PropertyList();
-            properties.Add($"@{prefix}KEY", primaryKey.Field.GetValue(obj));
+            var fields = GetClassFields<T>(x => !x.ShouldOmit(obj) && !x.Meta.OmitOnUpdate);
 
-            foreach (SQLMetaField meta in sqlMetas)
-                properties.Add($"@{prefix}_{meta.Index}", meta.Field.GetValue(obj));
+            var primaryKeys = fields.Where(x => x.Meta.IsPrimaryKey);
+
+            if (!primaryKeys.Any())
+            {
+                throw new NoPrimaryKeyException();
+            }
+
+            string command = $"UPDATE `{table}` SET {string.Join(", ", fields.CastEnumeration(x => $"{x.SQLName}=@{prefix}_{x.FieldIndex}"))} WHERE {BuildSelector(primaryKeys, obj, out var prop, prefix)};";
+            properties = new PropertyList();
+            properties.Add(prop);
+
+            foreach (var meta in fields)
+                properties.Add($"@{prefix}_{meta.FieldIndex}", meta.GetValue(obj));
 
             return command;
         }
 
         public static MySqlCommand BuildDeleteCommand<T>(T obj, string table, MySqlConnection sqlConnection = null)
         {
-            SQLMetaField primaryKey = null;
-            foreach (FieldInfo field in typeof(T).GetFields())
-            {
-                bool isPrimary = false;
-                string name = field.Name;
-                foreach (Attribute attrib in Attribute.GetCustomAttributes(field))
-                {
-                    if (attrib is SQLIgnore)
-                    {
-                        break;
-                    }
-                    else if (attrib is SQLPrimaryKey)
-                    {
-                        isPrimary = true;
-                    }
-                    else if (attrib is SQLPropertyName)
-                    {
-                        name = ((SQLPropertyName)attrib).Name;
-                    }
-                }
-                if (isPrimary)
-                {
-                    primaryKey = new SQLMetaField(name, -1, field);
-                    break;
-                }
-            }
-            if (primaryKey == null) throw new NoPrimaryKeyException();
+            var fields = GetClassFields<T>(x => !x.ShouldOmit(obj));
 
-            string command = $"DELETE FROM `{table}` WHERE {primaryKey.Name}=@KEY;";
+            var primaryKeys = fields.Where(x => x.Meta.IsPrimaryKey);
+
+            if (!primaryKeys.Any())
+            {
+                throw new NoPrimaryKeyException();
+            }
+            string command = $"DELETE FROM `{table}` WHERE {BuildSelector(primaryKeys, obj, out var prms)};";
             MySqlCommand sqlCommand = (sqlConnection != null ? new MySqlCommand(command, sqlConnection) : new MySqlCommand(command));
-            sqlCommand.Parameters.AddWithValue("@KEY", primaryKey.Field.GetValue(obj));
+            sqlCommand.Add(prms);
             return sqlCommand;
         }
 
         public static string BuildDeleteCommandContent<T>(T obj, string table, int prefix, out PropertyList properties)
         {
-            SQLMetaField primaryKey = null;
-            foreach (FieldInfo field in typeof(T).GetFields())
-            {
-                bool isPrimary = false;
-                string name = field.Name;
-                foreach (Attribute attrib in Attribute.GetCustomAttributes(field))
-                {
-                    if (attrib is SQLIgnore)
-                    {
-                        break;
-                    }
-                    else if (attrib is SQLPrimaryKey)
-                    {
-                        isPrimary = true;
-                    }
-                    else if (attrib is SQLPropertyName)
-                    {
-                        name = ((SQLPropertyName)attrib).Name;
-                    }
-                }
-                if (isPrimary)
-                {
-                    primaryKey = new SQLMetaField(name, -1, field);
-                    break;
-                }
-            }
-            if (primaryKey == null) throw new NoPrimaryKeyException();
+            var fields = GetClassFields<T>(x => !x.ShouldOmit(obj));
 
-            string k1 = $"@{prefix}KEY";
-            string command = $"DELETE FROM `{table}` WHERE {primaryKey.Name}={k1};";
+            var primaryKeys = fields.Where(x => x.Meta.IsPrimaryKey);
+
+            if (!primaryKeys.Any())
+            {
+                throw new NoPrimaryKeyException();
+            }
+            string command = $"DELETE FROM `{table}` WHERE {BuildSelector(primaryKeys, obj, out var prms, prefix)};";
 
             properties = new PropertyList();
-            properties.Add(k1, primaryKey.Field.GetValue(obj));
+            properties.Add(prms);
 
             return command;
         }
@@ -393,60 +275,43 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                 Attribute attrib = Attribute.GetCustomAttribute(typeof(T), typeof(SQLDatabaseEngine));
                 dbEngine = ((SQLDatabaseEngine)attrib).DatabaseEngine;
             }
-            foreach (FieldInfo field in typeof(T).GetFields())
+
+            foreach (var field in GetClassFields<T>())
             {
-                SQLBuildField buildField = new SQLBuildField()
+                if (fields.Where(x => string.Equals(x.Name, field.SQLName, StringComparison.InvariantCultureIgnoreCase)).Count() == 0)
                 {
-                    Name = field.Name
-                };
-                bool include = true;
-                foreach (Attribute attrib in Attribute.GetCustomAttributes(field))
-                {
-                    switch (attrib)
+                    var bField = new SQLBuildField()
                     {
-                        case SQLIgnore _:
-                            include = false;
-                            break;
+                        AutoIncrement = field.Meta.AutoIncrement,
+                        Indexed = field.AttributeDefined<SQLIndex>(),
+                        Name = field.SQLName,
+                        Null = field.Meta.DBNull,
+                        PrimaryKey = field.Meta.IsPrimaryKey,
+                        Unique = field.Meta.Unique,
+                        OverrideType = field.OverrideType
+                    };
 
-                        case SQLAutoIncrement _:
-                            buildField.AutoIncrement = true;
-                            break;
-
-                        case SQLDefault DefaultVal:
-                            buildField.Default = DefaultVal.DefaultValue;
-                            break;
-
-                        case SQLPrimaryKey _:
-                            buildField.PrimaryKey = true;
-                            break;
-
-                        case SQLPropertyName name:
-                            buildField.Name = name.Name;
-                            break;
-
-                        case SQLNull _:
-                            buildField.Null = true;
-                            break;
-
-                        case SQLUnique _:
-                            buildField.Unique = true;
-                            break;
-
-                        case SQLIndex _:
-                            buildField.Indexed = true;
-                            break;
-
-                        default:
-                            if (attrib.GetType().BaseType == typeof(SQLType))
-                                buildField.Type = ((SQLType)attrib);
-                            break;
+                    if (field.OverrideType != null)
+                    {
+                        bField.Type = field.OverrideType;
+                    }  else
+                    {
+                        bField.Type = m_TypeHelper.GetSQLTypeIndexed(field.FieldType);
                     }
-                }
-                if (include && fields.Where(x => string.Equals(x.Name, buildField.Name, StringComparison.InvariantCultureIgnoreCase)).Count() == 0)
-                {
-                    if (buildField.Type == null) buildField.Type = m_TypeHelper.GetSQLTypeIndexed(field.FieldType);
-                    if (buildField.Type == null) throw new SQLIncompatableTypeException(field.Name);
-                    fields.Add(buildField);
+
+
+                    var def = field.GetAttribute<SQLDefault>();
+                    if (def != null)
+                    {
+                        bField.Default = def.DefaultValue;
+                    }
+
+                    if (bField.Type == null)
+                    {
+                        throw new SQLIncompatableTypeException(bField.Name);
+                    }
+
+                    fields.Add(bField);
                 }
             }
 
@@ -454,18 +319,30 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             commandBuilder.AppendLine($"CREATE TABLE `{MySqlHelper.EscapeString(TableName)}` (");
             List<string> bodyParams = new List<string>();
             List<object> defaults = new List<object>();
+            var primaryKeys = new List<SQLBuildField>();
+
             foreach (SQLBuildField field in fields)
             {
                 bodyParams.Add($"    `{field.Name}` {field.SQLRepresentation} {(field.Null ? "NULL" : "NOT NULL")}{(field.Default != null ? $" DEFAULT @DEF{defaults.Count}" : "")}{(field.AutoIncrement ? " AUTO_INCREMENT" : "")}");
 
                 if (field.Default != null) defaults.Add(field.Default);
+                //if (field.PrimaryKey)
+                //    bodyParams.Add($"    PRIMARY KEY (`{field.Name}`)");
+
                 if (field.PrimaryKey)
-                    bodyParams.Add($"    PRIMARY KEY (`{field.Name}`)");
+                    primaryKeys.Add(field);
+
                 if (field.Unique)
                     bodyParams.Add($"    UNIQUE `{field.Name}_Unique` (`{field.Name}`)");
                 if (field.Indexed)
                     bodyParams.Add($"    INDEX `{field.Name}_INDEX` (`{field.Name}`)");
             }
+
+            if (primaryKeys.Any())
+            {
+                bodyParams.Add($"    PRIMARY KEY ({string.Join(", ", primaryKeys.Select(x => $"`{x.Name}`"))})");
+            }
+
             commandBuilder.AppendLine(string.Join(",\n", bodyParams));
             commandBuilder.Append($") ENGINE = {dbEngine};");
             MySqlCommand sqlCommand = (Connection != null ? new MySqlCommand(commandBuilder.ToString(), Connection) : new MySqlCommand(commandBuilder.ToString()));
@@ -473,6 +350,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             {
                 sqlCommand.Parameters.AddWithValue($"@DEF{defaults.IndexOf(def)}", def);
             }
+
             return sqlCommand;
         }
     }

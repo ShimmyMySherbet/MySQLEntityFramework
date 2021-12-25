@@ -1,9 +1,9 @@
-﻿using ShimmyMySherbet.MySQL.EF.Models;
-using ShimmyMySherbet.MySQL.EF.Models.Interfaces;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
+using ShimmyMySherbet.MySQL.EF.Models;
+using ShimmyMySherbet.MySQL.EF.Models.Interfaces;
 
 namespace ShimmyMySherbet.MySQL.EF.Core
 {
@@ -26,6 +26,16 @@ namespace ShimmyMySherbet.MySQL.EF.Core
 
         private bool m_Inited = false;
 
+        /// <summary>
+        /// When enabled, numeric auto-increment primary key fields will be updated with the ID assigned to the new row when inserting.
+        /// This is still an experimental feature
+        /// </summary>
+        public bool AutoUpdateInstanceKey
+        {
+            get => Client.AutoUpdateInstanceKey;
+            set => Client.AutoUpdateInstanceKey = value;
+        }
+
         private List<IDatabaseTableInitializer> m_Initializers = new List<IDatabaseTableInitializer>();
 
         public DatabaseClient(DatabaseSettings settings, bool singleConnectionMode = true, bool autoInit = true)
@@ -38,6 +48,13 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         public DatabaseClient(string connectionString, bool singleConnectionMode = true, bool autoInit = true)
         {
             Client = new MySQLEntityClient(connectionString, singleConnectionMode);
+            m_AutoInit = autoInit;
+            FinaliseConstructor();
+        }
+
+        public DatabaseClient(IConnectionProvider connectionProvider, bool autoInit = true)
+        {
+            Client = new MySQLEntityClient(connectionProvider);
             m_AutoInit = autoInit;
             FinaliseConstructor();
         }
@@ -91,7 +108,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
 
             foreach (var property in m_Class.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
             {
-                if ( property.CanRead && typeof(IDatabaseTableInitializer).IsAssignableFrom(property.PropertyType))
+                if (property.CanRead && typeof(IDatabaseTableInitializer).IsAssignableFrom(property.PropertyType))
                 {
                     var inst = property.GetValue(this);
                     if (inst != null && inst is IDatabaseTableInitializer init)
@@ -104,10 +121,14 @@ namespace ShimmyMySherbet.MySQL.EF.Core
             SendClientInstances();
         }
 
-
         public bool Connect()
         {
             return Client.Connect();
+        }
+
+        public bool Connect(out string errorMessage)
+        {
+            return Client.Connect(out errorMessage);
         }
 
         public async Task<bool> ConnectAsync()

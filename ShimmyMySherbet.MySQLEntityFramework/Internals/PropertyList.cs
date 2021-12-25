@@ -25,13 +25,26 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                 m_Properties.Add(new BuildProperty(key, value));
             }
         }
+
+        public void Add(IEnumerable<ParamObject> param)
+        {
+            lock (m_Properties)
+            {
+                foreach (var p in param)
+                {
+                    m_Properties.Add(new BuildProperty(p.Key, p.Value));
+                }
+            }
+        }
+
         public void Reset()
         {
-            lock(m_Properties)
+            lock (m_Properties)
             {
                 m_Properties.Clear();
             }
         }
+
         public void Merge(PropertyList properties)
         {
             if (properties == this) throw new NotSupportedException("Cannot merge properties into self.");

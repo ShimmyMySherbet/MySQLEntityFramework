@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace ShimmyMySherbet.MySQL.EF.Models
 {
+    [AttributeUsage(AttributeTargets.Class)]
     public sealed class SQLDatabaseEngine : Attribute
     {
         public readonly string DatabaseEngine;

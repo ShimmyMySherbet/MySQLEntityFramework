@@ -29,10 +29,13 @@ namespace ShimmyMySherbet.MySQL.EF.Models
         private StringBuilder m_CommandBuilder { get; set; } = new StringBuilder();
         private List<SQLMetaField> m_SQLMetas = new List<SQLMetaField>();
         private bool m_FirstInsert = true;
+        private EInsertMode m_Mode;
 
-        public BulkInserter(MySqlConnection connection, string table)
+
+        public BulkInserter(MySqlConnection connection, string table, EInsertMode mode = EInsertMode.INSERT)
         {
             m_Connection = connection;
+            m_Mode = mode;
             Table = table;
 
             foreach (FieldInfo Field in typeof(T).GetFields())
@@ -70,7 +73,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models
             lock (m_CommandBuilder)
             {
                 m_CommandBuilder = new StringBuilder();
-                string Command = $"INSERT INTO `{Table}` ({string.Join(", ", m_SQLMetas.CastEnumeration(x => x.Name))}) VALUES";
+                string Command = $"INSERT{(m_Mode == EInsertMode.INSERT_IGNORE ? " IGNORE" : "")} INTO `{Table}` ({string.Join(", ", m_SQLMetas.CastEnumeration(x => x.Name))}) VALUES";
                 m_CommandBuilder.Append(Command);
             }
         }
@@ -85,7 +88,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models
             {
                 lock (m_CommandBuilder)
                 {
-                    m_CommandBuilder.Append($"{(m_FirstInsert ? "" : ",")}\n({string.Join(", ", m_SQLMetas.CastEnumeration(x => $"@{prefix}_{x.Index}"))})");
+                    m_CommandBuilder.Append($"{(m_FirstInsert ? "" : ",")}\n({string.Join(", ", m_SQLMetas.CastEnumeration(x => $"@{prefix}_{x.FieldIndex}"))})");
                 }
                 m_FirstInsert = false;
 
@@ -93,7 +96,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models
                 {
                     foreach (var meta in m_SQLMetas)
                     {
-                        m_BuildProperties.Add($"@{prefix}_{meta.Index}", meta.Field.GetValue(instance));
+                        m_BuildProperties.Add($"@{prefix}_{meta.FieldIndex}", meta.Field.GetValue(instance));
                     }
                 }
             }

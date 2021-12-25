@@ -1,16 +1,9 @@
-﻿using Org.BouncyCastle.Asn1.Mozilla;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace ShimmyMySherbet.MySQL.EF.Models.Internals
+﻿namespace ShimmyMySherbet.MySQL.EF.Models.Internals
 {
     public class SQLBuildField
     {
         public SQLType Type;
-        public string OverrideType = null;
+        public SQLType OverrideType = null;
 
         public bool SetLength = false;
 
@@ -20,7 +13,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models.Internals
             {
                 if (OverrideType != null)
                 {
-                    return OverrideType;
+                    return OverrideType.SQLRepresentation;
                 }
                 return Type.SQLRepresentation;
             }

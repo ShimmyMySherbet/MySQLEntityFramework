@@ -9,7 +9,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models.Internals
 {
     public abstract class SQLType : Attribute
     {
-        public bool Signed
+        public virtual bool Signed
         {
             get
             {
@@ -24,7 +24,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models.Internals
                 return Signed;
             }
         }
-        public int Length
+        public virtual int Length
         {
             get
             {
@@ -40,7 +40,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models.Internals
             }
         }
 
-        public string TypeName
+        public virtual string TypeName
         {
             get
             {
@@ -56,7 +56,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models.Internals
             }
         }
 
-        public bool NoSign
+        public virtual bool NoSign
         {
             get
             {

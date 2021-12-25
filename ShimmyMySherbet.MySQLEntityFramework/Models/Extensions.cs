@@ -54,7 +54,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models
 
         public static int EFInsert<T>(this MySqlConnection connection, T instance, string table)
         {
-            using (var cmd = EntityCommandBuilder.BuildInsertCommand(instance, table, connection))
+            using (var cmd = EntityCommandBuilder.BuildInsertCommand(instance, table, out _, connection))
             {
                 return cmd.ExecuteNonQuery();
             }
@@ -62,7 +62,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models
 
         public static async Task<int> EFInsertAsync<T>(this MySqlConnection connection, T instance, string table)
         {
-            using (var cmd = EntityCommandBuilder.BuildInsertCommand(instance, table, connection))
+            using (var cmd = EntityCommandBuilder.BuildInsertCommand(instance, table, out _, connection))
             {
                 return await cmd.ExecuteNonQueryAsync();
             }
