@@ -32,6 +32,15 @@ namespace ExampleApp
             RunConsole().GetAwaiter().GetResult();
         }
 
+        private static void Help()
+        {
+            var ms = typeof(Program).GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+            foreach (var m in ms)
+            {
+                Console.WriteLine($"{m.Name}({string.Join(", ", m.GetParameters().Select(x => $"{x.ParameterType.Name} {x.Name}"))})");
+            }
+        }
+
         private static async Task<ulong> CreateUser(string username, string email)
         {
             var newUser = new UserAccount()
@@ -71,7 +80,7 @@ namespace ExampleApp
                 Console.ForegroundColor = ConsoleColor.Cyan;
                 var command = Console.ReadLine();
                 var targetMethod = command.Split(' ')[0];
-                var arguments = command.Substring(targetMethod.Length + 1).Split(' ').ToArray();
+                var arguments =  targetMethod.Length != command.Length ? command.Substring(targetMethod.Length + 1).Split(' ').ToArray() : new string[0];
                 Console.ForegroundColor = ConsoleColor.Red;
                 var mInfo = typeof(Program).GetMethod(targetMethod, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.IgnoreCase);
 
