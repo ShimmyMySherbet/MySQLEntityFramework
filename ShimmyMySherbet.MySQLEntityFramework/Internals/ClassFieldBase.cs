@@ -93,6 +93,8 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             }
         }
 
+        public Type ReadType => SerializeFormat != null ? typeof(string) : FieldType;
+
         public abstract bool AttributeDefined<T>() where T : Attribute;
 
         public abstract T GetAttribute<T>() where T : Attribute;

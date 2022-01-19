@@ -1,10 +1,10 @@
-﻿using MySql.Data.MySqlClient;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using MySql.Data.MySqlClient;
 using ShimmyMySherbet.MySQL.EF.Models;
 using ShimmyMySherbet.MySQL.EF.Models.Exceptions;
 using ShimmyMySherbet.MySQL.EF.Models.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace ShimmyMySherbet.MySQL.EF.Core
 {
@@ -78,6 +78,24 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         public async Task<IBulkInserter<T>> CreateInserterAsync(int maxInsertsPerTransaction = 5000)
         {
             return new TransactionalBulkInserter<T>(await Client.ConnectionProvider.GetConnectionAsync(), TableName, maxInsertsPerTransaction);
+        }
+
+        /// <summary>
+        /// Gets the number of rows in the table
+        /// </summary>
+        /// <returns>Row count</returns>
+        public async Task<ulong> GetRowCountAsync()
+        {
+            return await QuerySingleAsync<ulong>("SELECT COUNT(*) FROM @TABLE;");
+        }
+
+        /// <summary>
+        /// Gets the number of rows in the table
+        /// </summary>
+        /// <returns>Row count</returns>
+        public ulong GetRowCount()
+        {
+            return QuerySingle<ulong>("SELECT COUNT(*) FROM @TABLE;");
         }
 
         /// <summary>

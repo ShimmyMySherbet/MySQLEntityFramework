@@ -3,7 +3,6 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using ExampleApp.Database;
 using ExampleApp.Database.Models;
@@ -28,7 +27,7 @@ namespace ExampleApp
             Console.WriteLine($"Connected: {Database.Connect(out string fail)}"); // try to connect to database
             Console.WriteLine($"Status Message: {fail}"); // print user friendly error if failed
             Database.CheckSchema(); // Check Schema (ensure tables exist, if not, create them)
-            //Database.AutoUpdateInstanceKey = true; // Auto update class auto increment primary key on insert
+            Database.AutoUpdateInstanceKey = true; // Auto update class auto increment primary key on insert
 
             RunConsole().GetAwaiter().GetResult();
         }
@@ -77,7 +76,6 @@ namespace ExampleApp
             }
         }
 
-
         private static void ShowBalancesSync()
         {
             var balances = Database.Balances.Query("SELECT * FROM @TABLE;");
@@ -87,17 +85,14 @@ namespace ExampleApp
             }
         }
 
-
-        private static int GetUserCountSync()
+        private static ulong GetUserCountSync()
         {
-            var i = Database.Users.QuerySingle<int>("SELECT COUNT(*) FROM @TABLE;");
-            return i;
+            return Database.Users.GetRowCount();
         }
 
-        private static async Task<int> GetUserCount()
+        private static async Task<ulong> GetUserCount()
         {
-            var i = await Database.Users.QuerySingleAsync<int>("SELECT COUNT(*) FROM @TABLE;");
-            return i;
+            return await Database.Balances.GetRowCountAsync();
         }
 
         private static async Task ModifyBalance(ulong uid, double amount)
@@ -143,8 +138,6 @@ namespace ExampleApp
 
                 for (int i = 0; i < param.Length; i++)
                 {
-                  
-
                     if (mParam[i].ParameterType == typeof(ulong))
                     {
                         param[i] = ulong.Parse(arguments[i]);
@@ -203,5 +196,103 @@ namespace ExampleApp
         }
 
         #endregion "Test console code"
+
+        private static async Task TestConversions()
+        {
+            Console.WriteLine("testing reads from BIGINT");
+            try
+            {
+                Console.WriteLine(await Database.Balances.QuerySingleAsync<byte>("SELECT COUNT(*) FROM @TABLE;"));
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("BIGINT -> Byte fail");
+            }
+            try
+            {
+                Console.WriteLine(await Database.Balances.QuerySingleAsync<sbyte>("SELECT COUNT(*) FROM @TABLE;"));
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("BIGINT -> SByte fail");
+            }
+
+            try
+            {
+                Console.WriteLine(await Database.Balances.QuerySingleAsync<short>("SELECT COUNT(*) FROM @TABLE;"));
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("BIGINT -> short fail");
+            }
+            try
+            {
+                Console.WriteLine(await Database.Balances.QuerySingleAsync<ushort>("SELECT COUNT(*) FROM @TABLE;"));
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("BIGINT -> ushort fail");
+            }
+            try
+            {
+                Console.WriteLine(await Database.Balances.QuerySingleAsync<int>("SELECT COUNT(*) FROM @TABLE;"));
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("BIGINT -> int fail");
+            }
+            try
+            {
+                Console.WriteLine(await Database.Balances.QuerySingleAsync<uint>("SELECT COUNT(*) FROM @TABLE;"));
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("BIGINT -> uint fail");
+            }
+            try
+            {
+                Console.WriteLine(await Database.Balances.QuerySingleAsync<long>("SELECT COUNT(*) FROM @TABLE;"));
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("BIGINT -> long fail");
+            }
+            try
+            {
+                Console.WriteLine(await Database.Balances.QuerySingleAsync<ulong>("SELECT COUNT(*) FROM @TABLE;"));
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("BIGINT -> ulong fail");
+            }
+
+            try
+            {
+                Console.WriteLine(await Database.Balances.QuerySingleAsync<decimal>("SELECT COUNT(*) FROM @TABLE;"));
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("BIGINT -> decimal fail");
+            }
+            try
+            {
+                Console.WriteLine(await Database.Balances.QuerySingleAsync<float>("SELECT COUNT(*) FROM @TABLE;"));
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("BIGINT -> float fail");
+            }
+            try
+            {
+                Console.WriteLine(await Database.Balances.QuerySingleAsync<double>("SELECT COUNT(*) FROM @TABLE;"));
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("BIGINT -> double fail");
+            }
+            Console.WriteLine("done.");
+        }
+
+
     }
 }

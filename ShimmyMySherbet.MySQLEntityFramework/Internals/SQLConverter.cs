@@ -205,7 +205,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                         }
                         else
                         {
-                            var obj = TryRead(Reader, field.FieldType, Referance.Index, out var read);
+                            var obj = TryRead(Reader, field.ReadType, Referance.Index, out var read);
 
                             if (read)
                             {
@@ -303,15 +303,10 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             }
 
             var obj = reader.GetValue(index);
-            if (obj == null)
-            {
-                read = true;
-                return null;
-            }
 
             try
             {
-                var ob = Convert.ChangeType(obj, obj.GetType());
+                var ob = Convert.ChangeType(obj, type);
                 read = true;
                 return ob;
             }
@@ -361,7 +356,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                         }
                         else
                         {
-                            var ob = TryRead(Reader, field.FieldType, Referance.Index, out var read);
+                            var ob = TryRead(Reader, field.ReadType, Referance.Index, out var read);
                             if (read)
                             {
                                 field.SetValue(NewObject, ob);

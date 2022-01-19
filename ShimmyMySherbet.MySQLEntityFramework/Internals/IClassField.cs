@@ -9,6 +9,9 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
         string Name { get; }
         string SQLName { get; }
         Type FieldType { get; }
+
+        Type ReadType { get; }
+
         SQLType OverrideType { get; }
         int FieldIndex { get; }
         SQLMetaField Meta { get; }
