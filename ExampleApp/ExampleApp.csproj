@@ -94,8 +94,10 @@
     <Compile Include="Database\DatabaseManager.cs" />
     <Compile Include="Database\Models\Permission.cs" />
     <Compile Include="Database\Models\UserAccount.cs" />
+    <Compile Include="Database\Models\UserBalance.cs" />
     <Compile Include="Database\Models\UserComment.cs" />
     <Compile Include="Database\Models\UserPermissions.cs" />
+    <Compile Include="Database\Tables\BalanceTable.cs" />
     <Compile Include="Database\Tables\PermissionsTable.cs" />
     <Compile Include="Database\Tables\UserCommentsTable.cs" />
     <Compile Include="Database\Tables\UsersTable.cs" />

@@ -1,8 +1,9 @@
-﻿using System.ComponentModel;
+﻿using System;
+using System.ComponentModel;
 using System.Diagnostics;
-using System;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using ExampleApp.Database;
 using ExampleApp.Database.Models;
@@ -67,6 +68,46 @@ namespace ExampleApp
             }
         }
 
+        private static async Task ShowBalances()
+        {
+            var balances = await Database.Balances.QueryAsync("SELECT * FROM @TABLE;");
+            foreach (var bal in balances)
+            {
+                Console.WriteLine($"[{bal.UserID}] ${bal.Balance}");
+            }
+        }
+
+
+        private static void ShowBalancesSync()
+        {
+            var balances = Database.Balances.Query("SELECT * FROM @TABLE;");
+            foreach (var bal in balances)
+            {
+                Console.WriteLine($"[{bal.UserID}] ${bal.Balance}");
+            }
+        }
+
+
+        private static int GetUserCountSync()
+        {
+            var i = Database.Users.QuerySingle<int>("SELECT COUNT(*) FROM @TABLE;");
+            return i;
+        }
+
+        private static async Task<int> GetUserCount()
+        {
+            var i = await Database.Users.QuerySingleAsync<int>("SELECT COUNT(*) FROM @TABLE;");
+            return i;
+        }
+
+        private static async Task ModifyBalance(ulong uid, double amount)
+        {
+            var bal = await Database.Balances.QuerySingleAsync($"SELECT * FROM @TABLE WHERE UserID=@0;", uid)
+                ?? new UserBalance() { UserID = uid };
+            bal.Balance += amount;
+            await Database.Balances.InsertUpdateAsync(bal);
+        }
+
         #region "Test console code"
 
         private static async Task RunConsole()
@@ -80,7 +121,7 @@ namespace ExampleApp
                 Console.ForegroundColor = ConsoleColor.Cyan;
                 var command = Console.ReadLine();
                 var targetMethod = command.Split(' ')[0];
-                var arguments =  targetMethod.Length != command.Length ? command.Substring(targetMethod.Length + 1).Split(' ').ToArray() : new string[0];
+                var arguments = targetMethod.Length != command.Length ? command.Substring(targetMethod.Length + 1).Split(' ').ToArray() : new string[0];
                 Console.ForegroundColor = ConsoleColor.Red;
                 var mInfo = typeof(Program).GetMethod(targetMethod, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.IgnoreCase);
 
@@ -102,18 +143,27 @@ namespace ExampleApp
 
                 for (int i = 0; i < param.Length; i++)
                 {
-                    if (!converter.CanConvertTo(mParam[i].ParameterType) && mParam[i].ParameterType != typeof(ulong))
-                    {
-                        Console.WriteLine($"Cant convert to {mParam[i].ParameterType.Name}");
-                        continue;
-                    }
+                  
 
                     if (mParam[i].ParameterType == typeof(ulong))
                     {
                         param[i] = ulong.Parse(arguments[i]);
                     }
+                    else if (mParam[i].ParameterType == typeof(double))
+                    {
+                        param[i] = double.Parse(arguments[i]);
+                    }
+                    else if (mParam[i].ParameterType == typeof(decimal))
+                    {
+                        param[i] = decimal.Parse(arguments[i]);
+                    }
                     else
                     {
+                        if (!converter.CanConvertTo(mParam[i].ParameterType) && mParam[i].ParameterType != typeof(ulong))
+                        {
+                            Console.WriteLine($"Cant convert to {mParam[i].ParameterType.Name}");
+                            continue;
+                        }
                         param[i] = converter.ConvertTo(arguments[i], mParam[i].ParameterType);
                     }
                 }

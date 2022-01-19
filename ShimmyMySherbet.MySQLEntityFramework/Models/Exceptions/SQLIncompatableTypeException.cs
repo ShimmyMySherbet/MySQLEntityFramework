@@ -19,6 +19,11 @@ namespace ShimmyMySherbet.MySQL.EF.Models.Exceptions
                 Message_ = $"Field '{FieldName}' has an incompatible type. Change the field type, manually declare it's SQL type, or declare it as SQLIgnore.";
             }
         }
+
+        public SQLIncompatableTypeException(string columns, string requestedType)
+        {
+            Message_ = $"Couldn't find a compatible column to read from. Requested .NET Type: {requestedType}, Columns: {columns}";
+        }
         public override string Message => Message_;
     }
 }

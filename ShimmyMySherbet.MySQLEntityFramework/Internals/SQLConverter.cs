@@ -1,14 +1,12 @@
-﻿using MySql.Data.MySqlClient;
-using ShimmyMySherbet.MySQL.EF.Models;
-using ShimmyMySherbet.MySQL.EF.Models.Exceptions;
-using ShimmyMySherbet.MySQL.EF.Models.Internals;
-using ShimmyMySherbet.MySQL.EF.Models.TypeModel;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Reflection;
 using System.Threading.Tasks;
+using MySql.Data.MySqlClient;
+using ShimmyMySherbet.MySQL.EF.Models.Exceptions;
+using ShimmyMySherbet.MySQL.EF.Models.Internals;
+using ShimmyMySherbet.MySQL.EF.Models.TypeModel;
 
 namespace ShimmyMySherbet.MySQL.EF.Internals
 {
@@ -16,9 +14,9 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
     {
         public SQLTypeHelper TypeHelper;
 
-        public List<T> ReadModelsFromReader<T>(IDataReader Reader, int limit = -1)
+        public List<T> ReadModelsFromReader<T>(DbDataReader Reader, int limit = -1)
         {
-            if (TypeHelper != null && TypeHelper.GetSQLTypeIndexed(typeof(T)) != null)
+            if (typeof(T).IsPrimitive || TypeHelper != null && TypeHelper.GetSQLTypeIndexed(typeof(T)) != null)
             {
                 return ReadSQLBaseTypesUnsafe<T>(Reader, limit);
             }
@@ -30,7 +28,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
         public async Task<List<T>> ReadModelsFromReaderAsync<T>(DbDataReader Reader, int limit = -1)
         {
-            if (TypeHelper != null && TypeHelper.GetSQLTypeIndexed(typeof(T)) != null)
+            if (typeof(T).IsPrimitive || TypeHelper != null && TypeHelper.GetSQLTypeIndexed(typeof(T)) != null)
             {
                 return await ReadSQLBaseTypesUnsafeAsync<T>(Reader, limit);
             }
@@ -51,7 +49,6 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
         {
             List<T> Entries = new List<T>();
             int CompatableColumn = -1;
-            bool CastRequired = false;
             bool IsNumeric = SQLTypeHelper.NumericType(typeof(T));
             for (int i = 0; i < Reader.FieldCount; i++)
             {
@@ -63,28 +60,46 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                 else if (SQLTypeHelper.CanCastEquivilant(SQLType, typeof(T)) || (IsNumeric && SQLTypeHelper.NumericType(SQLType)))
                 {
                     CompatableColumn = i;
-                    CastRequired = true;
                 }
             }
-            if (CompatableColumn == -1) throw new SQLIncompatableTypeException();
+            if (CompatableColumn == -1)
+            {
+                if (Reader.FieldCount == 0)
+                {
+                    CompatableColumn = 0;
+                }
+                else
+                {
+                    var names = new List<string>();
+                    for (int i = 0; i < Reader.FieldCount; i++)
+                        names.Add(Reader.GetName(i));
+                    throw new SQLIncompatableTypeException(string.Join(", ", names), typeof(T).Name);
+                }
+            }
+
             bool checkLimit = limit != -1;
             int count = 0;
 
             while (Reader.Read())
             {
-                var value = Reader.GetValue(CompatableColumn);
                 count++;
-                if (value is DBNull)
+
+                try
                 {
-                    Entries.Add(default(T));
+                    var ob = TryRead(Reader, typeof(T), CompatableColumn, out var r);
+
+                    if (r)
+                    {
+                        Entries.Add((T)ob);
+                    }
+                    else
+                    {
+                        throw new SQLInvalidCastException(Reader.GetName(CompatableColumn), Reader.GetDataTypeName(CompatableColumn), typeof(T).Name);
+                    }
                 }
-                else if (CastRequired)
+                catch (InvalidCastException)
                 {
-                    Entries.Add((T)Convert.ChangeType(value, typeof(T)));
-                }
-                else
-                {
-                    Entries.Add((T)value);
+                    throw new SQLInvalidCastException(Reader.GetName(CompatableColumn), Reader.GetDataTypeName(CompatableColumn), typeof(T).Name);
                 }
                 if (checkLimit && count >= limit) break;
             }
@@ -93,7 +108,6 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
         public async Task<List<T>> ReadSQLBaseTypesUnsafeAsync<T>(DbDataReader Reader, int limit = -1)
         {
-
             List<T> Entries = new List<T>();
             int CompatableColumn = -1;
             bool IsNumeric = SQLTypeHelper.NumericType(typeof(T));
@@ -109,7 +123,20 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     CompatableColumn = i;
                 }
             }
-            if (CompatableColumn == -1) throw new SQLIncompatableTypeException();
+            if (CompatableColumn == -1)
+            {
+                if (Reader.FieldCount == 0)
+                {
+                    CompatableColumn = 0;
+                }
+                else
+                {
+                    var names = new List<string>();
+                    for (int i = 0; i < Reader.FieldCount; i++)
+                        names.Add(Reader.GetName(i));
+                    throw new SQLIncompatableTypeException(string.Join(", ", names), typeof(T).Name);
+                }
+            }
 
             bool checkLimit = limit != -1;
             int count = 0;
@@ -117,7 +144,24 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             while (await Reader.ReadAsync())
             {
                 count++;
-                Entries.Add(await Reader.GetFieldValueAsync<T>(CompatableColumn));
+
+                try
+                {
+                    var ob = TryRead(Reader, typeof(T), CompatableColumn, out var read);
+
+                    if (read)
+                    {
+                        Entries.Add((T)ob);
+                    }
+                    else
+                    {
+                        throw new SQLInvalidCastException(Reader.GetName(CompatableColumn), Reader.GetDataTypeName(CompatableColumn), typeof(T).Name);
+                    }
+                }
+                catch (InvalidCastException)
+                {
+                    throw new SQLInvalidCastException(Reader.GetName(CompatableColumn), Reader.GetDataTypeName(CompatableColumn), typeof(T).Name);
+                }
                 if (checkLimit && count >= limit) break;
             }
             return Entries;
@@ -127,7 +171,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
         {
             Dictionary<string, IClassField> BaseFields = new Dictionary<string, IClassField>(StringComparer.InvariantCultureIgnoreCase);
 
-            foreach(var field in EntityCommandBuilder.GetClassFields<T>())
+            foreach (var field in EntityCommandBuilder.GetClassFields<T>())
             {
                 if (!BaseFields.ContainsKey(field.SQLName))
                 {
@@ -155,14 +199,22 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     {
                         var field = BaseFields[Referance.Name];
 
-                        var obj = Reader.GetValue(Referance.Index);
-                        if (obj is DBNull)
+                        if (Reader.IsDBNull(Referance.Index))
                         {
                             field.SetValue(NewObject, GetDefault(field.FieldType));
                         }
                         else
                         {
-                            field.SetValue(NewObject, obj);
+                            var obj = TryRead(Reader, field.FieldType, Referance.Index, out var read);
+
+                            if (read)
+                            {
+                                field.SetValue(NewObject, obj);
+                            }
+                            else
+                            {
+                                throw new SQLInvalidCastException(Referance.Name, Referance.Type.Name, field.FieldType.Name);
+                            }
                         }
                     }
                 }
@@ -181,9 +233,98 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             return null;
         }
 
+        /// <summary>
+        /// Attempts to read a type from the reader using it's implemented conversion methods.
+        /// If the requested type isn't implemented for the reader, an IConversion cast is attempted instead
+        /// </summary>
+        /// <param name="read">True if the item was supported and read</param>
+        /// <returns>Instance or null</returns>
+        private static object TryRead(IDataReader reader, Type type, int index, out bool read)
+        {
+            if (type == typeof(string))
+            {
+                read = true;
+                return reader.GetString(index);
+            }
+            else if (type == typeof(bool))
+            {
+                read = true;
+                return reader.GetBoolean(index);
+            }
+            else if (type == typeof(byte))
+            {
+                read = true;
+                return reader.GetByte(index);
+            }
+            else if (type == typeof(char))
+            {
+                read = true;
+                return reader.GetChar(index);
+            }
+            else if (type == typeof(DateTime))
+            {
+                read = true;
+                return reader.GetDateTime(index);
+            }
+            else if (type == typeof(decimal))
+            {
+                read = true;
+                return reader.GetDecimal(index);
+            }
+            else if (type == typeof(double))
+            {
+                read = true;
+                return reader.GetDouble(index);
+            }
+            else if (type == typeof(float))
+            {
+                read = true;
+                return reader.GetFloat(index);
+            }
+            else if (type == typeof(Guid))
+            {
+                read = true;
+                return reader.GetGuid(index);
+            }
+            else if (type == typeof(short))
+            {
+                read = true;
+                return reader.GetInt16(index);
+            }
+            else if (type == typeof(int))
+            {
+                read = true;
+                return reader.GetInt32(index);
+            }
+            else if (type == typeof(long))
+            {
+                read = true;
+                return reader.GetInt64(index);
+            }
+
+            var obj = reader.GetValue(index);
+            if (obj == null)
+            {
+                read = true;
+                return null;
+            }
+
+            try
+            {
+                var ob = Convert.ChangeType(obj, obj.GetType());
+                read = true;
+                return ob;
+            }
+            catch (InvalidCastException)
+            {
+                read = false;
+            }
+
+            return null;
+        }
+
         public async Task<List<T>> ReadClassesAsync<T>(DbDataReader Reader, int limit = -1)
         {
-
             var BaseFields = new Dictionary<string, IClassField>(StringComparer.InvariantCultureIgnoreCase);
             foreach (var field in EntityCommandBuilder.GetClassFields<T>())
             {
@@ -214,13 +355,21 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     {
                         var field = BaseFields[Referance.Name];
                         var obj = Reader.GetValue(Referance.Index);
-                        if (obj is DBNull)
+                        if (await Reader.IsDBNullAsync(Referance.Index))
                         {
                             field.SetValue(NewObject, GetDefault(field.FieldType));
                         }
                         else
                         {
-                            field.SetValue(NewObject, obj);
+                            var ob = TryRead(Reader, field.FieldType, Referance.Index, out var read);
+                            if (read)
+                            {
+                                field.SetValue(NewObject, ob);
+                            }
+                            else
+                            {
+                                throw new SQLInvalidCastException(Referance.Name, Referance.Type.Name, field.FieldType.Name);
+                            }
                         }
                     }
                 }
