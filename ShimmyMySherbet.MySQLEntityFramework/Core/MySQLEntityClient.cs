@@ -244,7 +244,7 @@ namespace ShimmyMySherbet.MySQL.EF.Core
         /// <param name="Table">The table to create the object in</param>
         public async Task InsertAsync<T>(T Obj, string Table)
         {
-            var connection = await ConnectionProvider.GetConnectionAsync(forceNew: true);
+            var connection = await ConnectionProvider.GetConnectionAsync();
             try
             {
                 using (MySqlCommand Command = EntityCommandBuilder.BuildInsertCommand<T>(Obj, Table, out var fields, connection))

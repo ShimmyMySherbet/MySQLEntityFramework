@@ -89,7 +89,14 @@ namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
                 {
                     if (m_Connections.ContainsKey(m_ThreadID))
                     {
-                        return m_Connections[m_ThreadID];
+                        var cCon = m_Connections[m_ThreadID];
+                        if (cCon.State != System.Data.ConnectionState.Broken && cCon.State != System.Data.ConnectionState.Closed)
+                        {
+                            return cCon;
+                        } else
+                        {
+                            cCon?.Dispose();
+                        }
                     }
                 }
             }
@@ -119,7 +126,16 @@ namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
                 {
                     if (m_Connections.ContainsKey(m_ThreadID))
                     {
-                        return m_Connections[m_ThreadID];
+                        var cCon = m_Connections[m_ThreadID];
+
+                        if (cCon.State != System.Data.ConnectionState.Broken && cCon.State != System.Data.ConnectionState.Closed)
+                        {
+                            return cCon;
+                        }
+                        else
+                        {
+                            cCon?.Dispose();
+                        }
                     }
                 }
             }

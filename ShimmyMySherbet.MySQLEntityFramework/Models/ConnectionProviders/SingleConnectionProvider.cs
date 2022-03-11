@@ -1,11 +1,17 @@
 ﻿using MySql.Data.MySqlClient;
 using ShimmyMySherbet.MySQL.EF.Models.Interfaces;
+using System;
 using System.Threading.Tasks;
 
 namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
 {
     /// <summary>
-    /// Maintains a single database connection
+    /// Maintains a single database connection.
+    /// Does not check for connection integrity, and does not do any connection locking.
+    /// Not recomended for multi-threaded use cases.
+    /// 
+    /// This version is depricatged, but remains for backwards compatability, see <seealso cref="SingletonConnectionProvider"/> for the revised version with thread locking and connection integrity checking.
+    /// This class will be marked obsolete in a future version.
     /// </summary>
     public class SingleConnectionProvider : IConnectionProvider
     {
