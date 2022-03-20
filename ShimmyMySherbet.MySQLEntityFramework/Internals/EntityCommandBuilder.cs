@@ -344,7 +344,17 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             }
 
             commandBuilder.AppendLine(string.Join(",\n", bodyParams));
-            commandBuilder.Append($") ENGINE = {dbEngine};");
+            commandBuilder.Append($") ENGINE = {dbEngine}");
+
+            var charset = typeof(T).GetCustomAttribute<SQLCharSetAttribute>();
+            if (charset == null || charset.CharSet == SQLCharSet.ServerDefault)
+            {
+                commandBuilder.Append(';');
+            } else
+            {
+                commandBuilder.Append($" DEFAULT CHARSET={charset.CharSetName};");
+            }
+
             MySqlCommand sqlCommand = (Connection != null ? new MySqlCommand(commandBuilder.ToString(), Connection) : new MySqlCommand(commandBuilder.ToString()));
             foreach (object def in defaults)
             {

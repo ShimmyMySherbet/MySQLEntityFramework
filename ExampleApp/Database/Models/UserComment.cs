@@ -3,6 +3,7 @@ using ShimmyMySherbet.MySQL.EF.Models;
 
 namespace ExampleApp.Database.Models
 {
+    [SQLCharSet(SQLCharSet.ServerDefault)] // Specifying default charset
     public class UserComment
     {   // Composite primary key
         [SQLPrimaryKey]

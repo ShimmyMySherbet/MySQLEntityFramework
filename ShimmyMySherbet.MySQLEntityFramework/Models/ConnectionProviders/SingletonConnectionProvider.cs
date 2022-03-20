@@ -15,7 +15,8 @@ namespace ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders
     /// This provider will also lock the connection and block other threads accessing it while it is in use. You have to call <seealso cref="ReleaseConnection(MySqlConnection)"/> or <seealso cref="ReleaseConnectionAsync(MySqlConnection)"/> to release the lock on the connection.
     /// 
     /// Warning:
-    /// Trying to obtain a connection lock on a thread that already owns the connection lock will not cause a thread lock, but obtaining a lock on 1 thread then running work on another thread that also tries to obtain a lock will cause a connection lock.
+    /// Trying to obtain a connection lock on a thread that already owns the connection lock will not cause a thread lock, 
+    /// but obtaining a lock on 1 thread then running work on another thread that also tries to obtain a lock will cause a connection lock.
     /// If you need more reliability over speed, you can use the <seealso cref="TransientConnectionProvider"/> to create a new connection all the time to avoid any thread locking issues.
     /// For backwards compatibility, you can still use <seealso cref="SingleConnectionProvider"/> that does not do any connection locking, but also does not ensure connection integrity.
     /// </summary>
