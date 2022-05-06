@@ -53,6 +53,11 @@ namespace ExampleApp
             return newUser.ID;
         }
 
+        private static void ShowSchema(string table)
+        {
+            Console.WriteLine(Database.Client.QuerySingle<string>($"SHOW CREATE TABLE `{table}`"));
+        }
+
         private static async Task GrantPermission(ulong userID, string permission, ulong granter)
         {
             // gets user perms from table, or creates new one if user does not have any perms
@@ -292,7 +297,5 @@ namespace ExampleApp
             }
             Console.WriteLine("done.");
         }
-
-
     }
 }

@@ -16,7 +16,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
         public List<T> ReadModelsFromReader<T>(DbDataReader Reader, int limit = -1)
         {
-            if (typeof(T).IsPrimitive || TypeHelper != null && TypeHelper.GetSQLTypeIndexed(typeof(T)) != null)
+            if (typeof(T).IsPrimitive || typeof(T) == typeof(string) || TypeHelper != null && TypeHelper.GetSQLTypeIndexed(typeof(T)) != null)
             {
                 return ReadSQLBaseTypesUnsafe<T>(Reader, limit);
             }
@@ -28,7 +28,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
         public async Task<List<T>> ReadModelsFromReaderAsync<T>(DbDataReader Reader, int limit = -1)
         {
-            if (typeof(T).IsPrimitive || TypeHelper != null && TypeHelper.GetSQLTypeIndexed(typeof(T)) != null)
+            if (typeof(T).IsPrimitive || typeof(T) == typeof(string) || TypeHelper != null && TypeHelper.GetSQLTypeIndexed(typeof(T)) != null)
             {
                 return await ReadSQLBaseTypesUnsafeAsync<T>(Reader, limit);
             }
