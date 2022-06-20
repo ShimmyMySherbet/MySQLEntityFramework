@@ -8,4 +8,11 @@ namespace ShimmyMySherbet.MySQL.EF.Models.Exceptions
         {
         }
     }
+
+    public class SQLConversionFailedException : Exception
+    {
+        public SQLConversionFailedException(int column, Type type) : base($"Failed to read type '{type.Name}' from data reader on column {column}")
+        {
+        }
+    }
 }

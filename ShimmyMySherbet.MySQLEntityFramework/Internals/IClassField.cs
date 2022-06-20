@@ -27,5 +27,6 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
         object GetValue(object instance);
 
         bool ShouldOmit(object instance);
+
     }
 }

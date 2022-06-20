@@ -77,6 +77,8 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                 }
             }
 
+            var typeReader = GetTypeReader(typeof(T), CompatableColumn);
+
             bool checkLimit = limit != -1;
             int count = 0;
 
@@ -86,16 +88,11 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
                 try
                 {
-                    var ob = TryRead(Reader, typeof(T), CompatableColumn, out var r);
-
-                    if (r)
-                    {
-                        Entries.Add((T)ob);
-                    }
-                    else
-                    {
-                        throw new SQLInvalidCastException(Reader.GetName(CompatableColumn), Reader.GetDataTypeName(CompatableColumn), typeof(T).Name);
-                    }
+                    Entries.Add((T)typeReader(Reader));
+                }
+                catch (SQLConversionFailedException)
+                {
+                    throw new SQLInvalidCastException(Reader.GetName(CompatableColumn), Reader.GetDataTypeName(CompatableColumn), typeof(T).Name);
                 }
                 catch (InvalidCastException)
                 {
@@ -138,6 +135,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                 }
             }
 
+            var typeReader = GetTypeReader(typeof(T), CompatableColumn);
             bool checkLimit = limit != -1;
             int count = 0;
 
@@ -147,16 +145,11 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
                 try
                 {
-                    var ob = TryRead(Reader, typeof(T), CompatableColumn, out var read);
-
-                    if (read)
-                    {
-                        Entries.Add((T)ob);
-                    }
-                    else
-                    {
-                        throw new SQLInvalidCastException(Reader.GetName(CompatableColumn), Reader.GetDataTypeName(CompatableColumn), typeof(T).Name);
-                    }
+                    Entries.Add((T)typeReader(Reader));
+                }
+                catch (SQLConversionFailedException)
+                {
+                    throw new SQLInvalidCastException(Reader.GetName(CompatableColumn), Reader.GetDataTypeName(CompatableColumn), typeof(T).Name);
                 }
                 catch (InvalidCastException)
                 {
@@ -169,7 +162,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
         public List<T> ReadClasses<T>(IDataReader Reader, int limit = -1)
         {
-            Dictionary<string, IClassField> BaseFields = new Dictionary<string, IClassField>(StringComparer.InvariantCultureIgnoreCase);
+            var BaseFields = new Dictionary<string, IClassField>(StringComparer.InvariantCultureIgnoreCase);
 
             foreach (var field in EntityCommandBuilder.GetClassFields<T>())
             {
@@ -178,13 +171,15 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     BaseFields[field.SQLName] = field;
                 }
             }
-            Dictionary<string, SQLFieldReferance> SQLFields = new Dictionary<string, SQLFieldReferance>(StringComparer.InvariantCultureIgnoreCase);
+
+            var SQLFields = new Dictionary<string, SQLFieldReferance>(StringComparer.InvariantCultureIgnoreCase);
             for (int i = 0; i < Reader.FieldCount; i++)
             {
                 Type SQLType = Reader.GetFieldType(i);
                 string Name = Reader.GetName(i);
                 SQLFields.Add(Name, new SQLFieldReferance(i, Name, SQLType));
             }
+
             List<T> Result = new List<T>();
             bool checkLimit = limit != -1;
             int count = 0;
@@ -193,29 +188,15 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             {
                 count++;
                 T NewObject = Activator.CreateInstance<T>();
-                foreach (SQLFieldReferance Referance in SQLFields.Values)
+                foreach (var referance in SQLFields.Values)
                 {
-                    if (BaseFields.ContainsKey(Referance.Name))
+                    if (BaseFields.ContainsKey(referance.Name))
                     {
-                        var field = BaseFields[Referance.Name];
+                        var field = BaseFields[referance.Name];
 
-                        if (Reader.IsDBNull(Referance.Index))
-                        {
-                            field.SetValue(NewObject, GetDefault(field.FieldType));
-                        }
-                        else
-                        {
-                            var obj = TryRead(Reader, field.ReadType, Referance.Index, out var read);
+                        var value = referance.Reader(Reader);
 
-                            if (read)
-                            {
-                                field.SetValue(NewObject, obj);
-                            }
-                            else
-                            {
-                                throw new SQLInvalidCastException(Referance.Name, Referance.Type.Name, field.FieldType.Name);
-                            }
-                        }
+                        field.SetValue(NewObject, value);
                     }
                 }
                 Result.Add(NewObject);
@@ -233,12 +214,98 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             return null;
         }
 
+        public static TypeReader GetTypeReader(Type type, int index)
+        {
+            var nullableUnderlying = Nullable.GetUnderlyingType(type);
+            var isNullable = nullableUnderlying != null;
+
+            if (isNullable)
+            {
+                type = nullableUnderlying;
+            }
+
+            if (type == typeof(string))
+            {
+                return (reader) => reader.GetString(index);
+            }
+            else if (type == typeof(bool))
+            {
+                return (reader) => reader.GetBoolean(index);
+            }
+            else if (type == typeof(byte))
+            {
+                return (reader) => reader.GetByte(index);
+            }
+            else if (type == typeof(char))
+            {
+                return (reader) => reader.GetChar(index);
+            }
+            else if (type == typeof(DateTime))
+            {
+                return (reader) => reader.GetDateTime(index);
+            }
+            else if (type == typeof(decimal))
+            {
+                return (reader) => reader.GetDecimal(index);
+            }
+            else if (type == typeof(double))
+            {
+                return (reader) => reader.GetDouble(index);
+            }
+            else if (type == typeof(float))
+            {
+                return (reader) => reader.GetFloat(index);
+            }
+            else if (type == typeof(Guid))
+            {
+                return (reader) => reader.GetGuid(index);
+            }
+            else if (type == typeof(short))
+            {
+                return (reader) => reader.GetInt16(index);
+            }
+            else if (type == typeof(int))
+            {
+                return (reader) => reader.GetInt32(index);
+            }
+            else if (type == typeof(long))
+            {
+                return (reader) => reader.GetInt64(index);
+            }
+
+            return (reader) =>
+            {
+                var obj = reader.GetValue(index);
+
+                if (obj == null)
+                {
+                    return null;
+                }
+
+                if (type.IsAssignableFrom(obj.GetType()))
+                {
+                    return obj;
+                }
+
+                try
+                {
+                    var ob = Convert.ChangeType(obj, type);
+                    return ob;
+                }
+                catch (InvalidCastException)
+                {
+                    throw new SQLConversionFailedException(index, type);
+                }
+            };
+        }
+
         /// <summary>
         /// Attempts to read a type from the reader using it's implemented conversion methods.
         /// If the requested type isn't implemented for the reader, an IConversion cast is attempted instead
         /// </summary>
         /// <param name="read">True if the item was supported and read</param>
         /// <returns>Instance or null</returns>
+        [Obsolete("Use GetTypeReader instead")]
         private static object TryRead(IDataReader reader, Type type, int index, out bool read)
         {
             if (type == typeof(string))
@@ -349,23 +416,9 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     if (BaseFields.ContainsKey(Referance.Name))
                     {
                         var field = BaseFields[Referance.Name];
-                        var obj = Reader.GetValue(Referance.Index);
-                        if (await Reader.IsDBNullAsync(Referance.Index))
-                        {
-                            field.SetValue(NewObject, GetDefault(field.FieldType));
-                        }
-                        else
-                        {
-                            var ob = TryRead(Reader, field.ReadType, Referance.Index, out var read);
-                            if (read)
-                            {
-                                field.SetValue(NewObject, ob);
-                            }
-                            else
-                            {
-                                throw new SQLInvalidCastException(Referance.Name, Referance.Type.Name, field.FieldType.Name);
-                            }
-                        }
+                        var obj = Referance.Reader(Reader);
+
+                        field.SetValue(NewObject, obj);
                     }
                 }
                 Result.Add(NewObject);
