@@ -16,6 +16,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models.Internals
         public bool Omit = false;
         public bool OmitOnNull = false;
         public bool OmitOnUpdate = false;
+        public bool OmitOnInsert = false;
 
         public bool IsPrimaryKey = false;
         public bool IsForeignKey = false;

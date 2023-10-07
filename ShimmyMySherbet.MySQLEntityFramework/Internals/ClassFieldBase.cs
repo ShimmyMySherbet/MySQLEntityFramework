@@ -7,6 +7,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
     public abstract class ClassFieldBase : IClassField
     {
         public abstract string Name { get; }
+        public abstract TypeReader Reader { get; }
 
         public string SQLName
         {

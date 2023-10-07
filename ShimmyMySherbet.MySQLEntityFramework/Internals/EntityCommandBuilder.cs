@@ -132,7 +132,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
         public static MySqlCommand BuildInsertCommand<T>(T obj, string table, out List<IClassField> fields, MySqlConnection connection = null)
         {
-            fields = GetClassFields<T>(x => !x.ShouldOmit(obj));
+            fields = GetClassFields<T>(x => !x.ShouldOmit(obj) && !x.Meta.OmitOnInsert);
             string command = $"INSERT INTO `{table}` ({string.Join(", ", fields.CastEnumeration(x => x.SQLName))}) VALUES ({string.Join(", ", fields.CastEnumeration(x => $"@{x.FieldIndex}"))});";
             MySqlCommand sqlCommand = (connection != null ? new MySqlCommand(command, connection) : new MySqlCommand(command));
             foreach (var field in fields)
@@ -142,7 +142,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
         public static string BuildInsertCommandContent<T>(T obj, string table, int prefix, out PropertyList properties)
         {
-            var fields = GetClassFields<T>(x => !x.ShouldOmit(obj));
+            var fields = GetClassFields<T>(x => !x.ShouldOmit(obj) && !x.Meta.OmitOnInsert);
 
             string command = $"INSERT INTO `{table}` ({string.Join(", ", fields.CastEnumeration(x => x.SQLName))}) VALUES ({string.Join(", ", fields.CastEnumeration(x => $"@{prefix}_{x.FieldIndex}"))});";
 
@@ -158,7 +158,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
             bool hasUpdatable = fields.Any(x => !x.Meta.OmitOnUpdate);
 
-            string command = $"INSERT INTO `{table}` ({string.Join(", ", fields.CastEnumeration(x => x.SQLName))}) VALUES ({string.Join(", ", fields.CastEnumeration(x => $"@{x.FieldIndex}"))}) {(!hasUpdatable ? "" : $"ON DUPLICATE KEY UPDATE {string.Join(", ", fields.Where(x => !x.Meta.OmitOnUpdate).Select(x => $"`{x.Name}`=@{x.FieldIndex}"))};")};";
+            string command = $"INSERT INTO `{table}` ({string.Join(", ", fields.Where(x => !x.Meta.OmitOnInsert).CastEnumeration(x => x.SQLName))}) VALUES ({string.Join(", ", fields.Where(x => !x.Meta.OmitOnInsert).CastEnumeration(x => $"@{x.FieldIndex}"))}) {(!hasUpdatable ? "" : $"ON DUPLICATE KEY UPDATE {string.Join(", ", fields.Where(x => !x.Meta.OmitOnUpdate).Select(x => $"`{x.Name}`=@{x.FieldIndex}"))};")};";
             MySqlCommand sqlCommand = (Connection != null ? new MySqlCommand(command, Connection) : new MySqlCommand(command));
             foreach (var meta in fields)
                 sqlCommand.Parameters.AddWithValue($"@{meta.FieldIndex}", meta.GetValue(obj));
@@ -170,7 +170,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             var fields = GetClassFields<T>(x => !x.ShouldOmit(obj));
             bool hasUpdatable = fields.Any(x => !x.Meta.OmitOnUpdate);
 
-            string command = $"INSERT INTO `{table}` ({string.Join(", ", fields.CastEnumeration(x => x.SQLName))}) VALUES ({string.Join(", ", fields.CastEnumeration(x => $"@{x.FieldIndex}"))}) {(!hasUpdatable ? "" : $"ON DUPLICATE KEY UPDATE {string.Join(", ", fields.Where(x => !x.Meta.OmitOnUpdate).Select(x => $"`{x.Name}`=@{x.FieldIndex}"))};")};";
+            string command = $"INSERT INTO `{table}` ({string.Join(", ", fields.Where(x=> !x.Meta.OmitOnInsert).CastEnumeration(x => x.SQLName))}) VALUES ({string.Join(", ", fields.Where(x => !x.Meta.OmitOnInsert).CastEnumeration(x => $"@{x.FieldIndex}"))}) {(!hasUpdatable ? "" : $"ON DUPLICATE KEY UPDATE {string.Join(", ", fields.Where(x => !x.Meta.OmitOnUpdate).Select(x => $"`{x.Name}`=@{x.FieldIndex}"))};")};";
             properties = new PropertyList();
             foreach (var meta in fields)
                 properties.Add($"@{prefix}_{meta.FieldIndex}", meta.GetValue(obj));

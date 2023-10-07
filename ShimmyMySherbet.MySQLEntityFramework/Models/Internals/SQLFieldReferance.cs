@@ -9,14 +9,11 @@ namespace ShimmyMySherbet.MySQL.EF.Models.Internals
         public string Name;
         public Type Type;
 
-        public TypeReader Reader;
-
         public SQLFieldReferance(int Index, string Name, Type T)
         {
             this.Index = Index;
             this.Name = Name;
             Type = T;
-            Reader = SQLConverter.GetTypeReader(T, Index);
         }
     }
 }

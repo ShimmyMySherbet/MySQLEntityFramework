@@ -13,10 +13,11 @@ namespace ExampleApp.Database.Models
         public ulong PostID { get; set; }
 
         public string Content { get; set; }
-        
-        public DateTime? Updated { get; set; } // Nullable
 
-        [SQLOmitUpdate]
+        [SQLOmitInsert, SQLNull] // Only provide this value when updating, leave default on insert
+        public DateTime? Updated { get; set; } // Nullable / optional value
+
+        [SQLOmitUpdate] // Only provide this value when inserting, leave default on insert
         public DateTime Posted { get; set; } = DateTime.Now;
     }
 }

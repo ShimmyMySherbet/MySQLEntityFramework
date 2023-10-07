@@ -8,6 +8,7 @@ using ShimmyMySherbet.MySQL.EF.Models;
 using ShimmyMySherbet.MySQL.EF.Models.TypeModel;
 namespace ExampleApp.Database.Models
 {
+    [SQLCharSet(SQLCharSet.utf8mb4)]
     public class UserAccount
     {
         [SQLPrimaryKey, SQLAutoIncrement]

@@ -77,7 +77,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                 }
             }
 
-            var typeReader = GetTypeReader(typeof(T), CompatableColumn);
+            var typeReader = GetTypeReader(typeof(T));
 
             bool checkLimit = limit != -1;
             int count = 0;
@@ -88,7 +88,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
                 try
                 {
-                    Entries.Add((T)typeReader(Reader));
+                    Entries.Add((T)typeReader(Reader, CompatableColumn));
                 }
                 catch (SQLConversionFailedException)
                 {
@@ -135,7 +135,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                 }
             }
 
-            var typeReader = GetTypeReader(typeof(T), CompatableColumn);
+            var typeReader = GetTypeReader(typeof(T));
             bool checkLimit = limit != -1;
             int count = 0;
 
@@ -145,7 +145,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
                 try
                 {
-                    Entries.Add((T)typeReader(Reader));
+                    Entries.Add((T)typeReader(Reader, CompatableColumn));
                 }
                 catch (SQLConversionFailedException)
                 {
@@ -194,7 +194,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     {
                         var field = BaseFields[referance.Name];
 
-                        var value = referance.Reader(Reader);
+                        var value = field.Reader(Reader, referance.Index);
 
                         field.SetValue(NewObject, value);
                     }
@@ -214,8 +214,9 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             return null;
         }
 
-        public static TypeReader GetTypeReader(Type type, int index)
+        public static TypeReader GetTypeReader(Type type)
         {
+            var rawType = type;
             var nullableUnderlying = Nullable.GetUnderlyingType(type);
             var isNullable = nullableUnderlying != null;
 
@@ -226,60 +227,144 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
             if (type == typeof(string))
             {
-                return (reader) => reader.GetString(index);
+                return (reader, index) =>
+                {
+                    if (reader.IsDBNull(index))
+                    {
+                        return GetDefault(rawType);
+                    }
+                    return reader.GetString(index);
+                };
             }
             else if (type == typeof(bool))
             {
-                return (reader) => reader.GetBoolean(index);
+                return (reader, index) =>
+                {
+                    if (reader.IsDBNull(index))
+                    {
+                        return GetDefault(rawType);
+                    }
+                    return reader.GetBoolean(index);
+                };
             }
             else if (type == typeof(byte))
             {
-                return (reader) => reader.GetByte(index);
+                return (reader, index) =>
+                {
+                    if (reader.IsDBNull(index))
+                    {
+                        return GetDefault(rawType);
+                    }
+                    return reader.GetByte(index);
+                };
             }
             else if (type == typeof(char))
             {
-                return (reader) => reader.GetChar(index);
+                return (reader, index) =>
+                {
+                    if (reader.IsDBNull(index))
+                    {
+                        return GetDefault(rawType);
+                    }
+                    return reader.GetChar(index);
+                };
             }
             else if (type == typeof(DateTime))
             {
-                return (reader) => reader.GetDateTime(index);
+                return (reader, index) =>
+                {
+                    if (reader.IsDBNull(index))
+                    {
+                        return GetDefault(rawType);
+                    }
+                    return reader.GetDateTime(index);
+                };
             }
             else if (type == typeof(decimal))
             {
-                return (reader) => reader.GetDecimal(index);
+                return (reader, index) =>
+                {
+                    if (reader.IsDBNull(index))
+                    {
+                        return GetDefault(rawType);
+                    }
+                    return reader.GetDecimal(index);
+                };
             }
             else if (type == typeof(double))
             {
-                return (reader) => reader.GetDouble(index);
+                return (reader, index) =>
+                {
+                    if (reader.IsDBNull(index))
+                    {
+                        return GetDefault(rawType);
+                    }
+                    return reader.GetDouble(index);
+                };
             }
             else if (type == typeof(float))
             {
-                return (reader) => reader.GetFloat(index);
+                return (reader, index) =>
+                {
+                    if (reader.IsDBNull(index))
+                    {
+                        return GetDefault(rawType);
+                    }
+                    return reader.GetFloat(index);
+                };
             }
             else if (type == typeof(Guid))
             {
-                return (reader) => reader.GetGuid(index);
+                return (reader, index) =>
+                {
+                    if (reader.IsDBNull(index))
+                    {
+                        return GetDefault(rawType);
+                    }
+                    return reader.GetGuid(index);
+                };
             }
             else if (type == typeof(short))
             {
-                return (reader) => reader.GetInt16(index);
+                return (reader, index) =>
+                {
+                    if (reader.IsDBNull(index))
+                    {
+                        return GetDefault(rawType);
+                    }
+                    return reader.GetInt16(index);
+                };
             }
             else if (type == typeof(int))
             {
-                return (reader) => reader.GetInt32(index);
+                return (reader, index) =>
+                {
+                    if (reader.IsDBNull(index))
+                    {
+                        return GetDefault(rawType);
+                    }
+                    return reader.GetInt32(index);
+                };
             }
             else if (type == typeof(long))
             {
-                return (reader) => reader.GetInt64(index);
+                return (reader, index) =>
+                {
+                    if (reader.IsDBNull(index))
+                    {
+                        return GetDefault(rawType);
+                    }
+                    return reader.GetInt64(index);
+                };
             }
 
-            return (reader) =>
+            return (reader, index) =>
             {
                 var obj = reader.GetValue(index);
 
                 if (obj == null)
                 {
-                    return null;
+                    return GetDefault(rawType);
                 }
 
                 if (type.IsAssignableFrom(obj.GetType()))
@@ -406,6 +491,8 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             bool checkLimit = limit != -1;
             int count = 0;
 
+
+
             List<T> Result = new List<T>();
             while (await Reader.ReadAsync())
             {
@@ -416,7 +503,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                     if (BaseFields.ContainsKey(Referance.Name))
                     {
                         var field = BaseFields[Referance.Name];
-                        var obj = Referance.Reader(Reader);
+                        var obj = field.Reader(Reader, Referance.Index);
 
                         field.SetValue(NewObject, obj);
                     }

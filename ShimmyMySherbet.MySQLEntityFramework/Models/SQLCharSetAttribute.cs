@@ -7,7 +7,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models
         public SQLCharSet CharSet { get; }
         public string CharSetName { get; }
 
-        public SQLCharSetAttribute(SQLCharSet charset = SQLCharSet.utf8mb4)
+        public SQLCharSetAttribute(SQLCharSet charset = SQLCharSet.ServerDefault)
         {
             CharSet = charset;
             if (charset == SQLCharSet.ServerDefault)

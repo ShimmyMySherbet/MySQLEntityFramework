@@ -11,7 +11,9 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
         public ClassField(FieldInfo info, int fieldIndex) : base(fieldIndex)
         {
             m_info = info;
+            Reader = SQLConverter.GetTypeReader(ReadType);
         }
+        public override TypeReader Reader { get; }
 
         public override Type FieldType => m_info.FieldType;
 

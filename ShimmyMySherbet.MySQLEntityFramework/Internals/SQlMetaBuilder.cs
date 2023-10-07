@@ -19,6 +19,7 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
                 Omit = field.AttributeDefined<SQLOmit>(),
                 OmitOnNull = field.AttributeDefined<SQLOmitOnNull>(),
                 OmitOnUpdate = field.AttributeDefined<SQLOmitUpdate>(),
+                OmitOnInsert = field.AttributeDefined<SQLOmitInsert>(),
                 Unique = field.AttributeDefined<SQLUnique>(),
                 Name = nameF != null ? nameF.Name : field.Name,
                 Ignore = field.AttributeDefined<SQLIgnore>(),
@@ -31,27 +32,8 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             /*
              * TO IMPLEMENT:
              *
-             * SQLOmit
-             *
-             * SQLIgnore
-             *
-             * SQLPropertyName
-             *
-             * SQLOmitOnNull
-             *
-             * SQLOmitOnUpdate
-             *
-             * SQLPrimaryKey
-             *
              * SQLForeignKey
              *
-             * SQLIndex
-             *
-             * SQLDefault
-             *
-             * SQLNull
-             *
-             * SQLUnique
              */
 
             return meta;

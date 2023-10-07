@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using ExampleApp.Database;
 using ExampleApp.Database.Models;
+using Org.BouncyCastle.Bcpg;
 using ShimmyMySherbet.MySQL.EF.Models;
 using ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders;
 
@@ -97,7 +98,40 @@ namespace ExampleApp
 
         private static async Task<ulong> GetUserCount()
         {
-            return await Database.Balances.GetRowCountAsync();
+            return await Database.Users.GetRowCountAsync();
+        }
+
+        private static async Task PostComment(ulong uid, ulong postid, string value)
+        {
+            var ent = new UserComment()
+            {
+                PostID = postid,
+                UserID = uid,
+                Content = value,
+                Posted = DateTime.Now,
+                Updated = DateTime.Now
+            };
+            await Database.Comments.InsertUpdateAsync(ent);
+        }
+
+
+        private static async Task ShowComments(ulong postID)
+        {
+            var comments = await Database.Comments.QueryAsync("SELECT * FROM @TABLE WHERE PostID=@0;", postID);
+            foreach (var c in comments)
+            {
+                Console.WriteLine($"PostID: {c.PostID}");
+                Console.WriteLine($"UserID: {c.UserID}");
+                Console.WriteLine($"Posted: {c.Posted.ToShortDateString()}");
+                if (c.Updated != null)
+                {
+                    Console.WriteLine($"Updated: {c.Updated.Value.ToShortDateString()}");
+                }
+                Console.WriteLine();
+                Console.WriteLine(c.Content);
+                Console.WriteLine();
+            }
+
         }
 
         private static async Task ModifyBalance(ulong uid, double amount)
@@ -202,99 +236,34 @@ namespace ExampleApp
 
         #endregion "Test console code"
 
+
+        private static async Task TestTypeConversion<T>()
+        {
+            try
+            {
+                var r = await Database.Balances.QuerySingleAsync<T>("SELECT COUNT(*) FROM @TABLE;");
+                Console.WriteLine($"BIGINT -> {typeof(T).Name} pass [{r}]");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"BIGINT -> {typeof(T).Name} fail: {ex.Message}");
+            }
+        }
+
         private static async Task TestConversions()
         {
             Console.WriteLine("testing reads from BIGINT");
-            try
-            {
-                Console.WriteLine(await Database.Balances.QuerySingleAsync<byte>("SELECT COUNT(*) FROM @TABLE;"));
-            }
-            catch (Exception)
-            {
-                Console.WriteLine("BIGINT -> Byte fail");
-            }
-            try
-            {
-                Console.WriteLine(await Database.Balances.QuerySingleAsync<sbyte>("SELECT COUNT(*) FROM @TABLE;"));
-            }
-            catch (Exception)
-            {
-                Console.WriteLine("BIGINT -> SByte fail");
-            }
-
-            try
-            {
-                Console.WriteLine(await Database.Balances.QuerySingleAsync<short>("SELECT COUNT(*) FROM @TABLE;"));
-            }
-            catch (Exception)
-            {
-                Console.WriteLine("BIGINT -> short fail");
-            }
-            try
-            {
-                Console.WriteLine(await Database.Balances.QuerySingleAsync<ushort>("SELECT COUNT(*) FROM @TABLE;"));
-            }
-            catch (Exception)
-            {
-                Console.WriteLine("BIGINT -> ushort fail");
-            }
-            try
-            {
-                Console.WriteLine(await Database.Balances.QuerySingleAsync<int>("SELECT COUNT(*) FROM @TABLE;"));
-            }
-            catch (Exception)
-            {
-                Console.WriteLine("BIGINT -> int fail");
-            }
-            try
-            {
-                Console.WriteLine(await Database.Balances.QuerySingleAsync<uint>("SELECT COUNT(*) FROM @TABLE;"));
-            }
-            catch (Exception)
-            {
-                Console.WriteLine("BIGINT -> uint fail");
-            }
-            try
-            {
-                Console.WriteLine(await Database.Balances.QuerySingleAsync<long>("SELECT COUNT(*) FROM @TABLE;"));
-            }
-            catch (Exception)
-            {
-                Console.WriteLine("BIGINT -> long fail");
-            }
-            try
-            {
-                Console.WriteLine(await Database.Balances.QuerySingleAsync<ulong>("SELECT COUNT(*) FROM @TABLE;"));
-            }
-            catch (Exception)
-            {
-                Console.WriteLine("BIGINT -> ulong fail");
-            }
-
-            try
-            {
-                Console.WriteLine(await Database.Balances.QuerySingleAsync<decimal>("SELECT COUNT(*) FROM @TABLE;"));
-            }
-            catch (Exception)
-            {
-                Console.WriteLine("BIGINT -> decimal fail");
-            }
-            try
-            {
-                Console.WriteLine(await Database.Balances.QuerySingleAsync<float>("SELECT COUNT(*) FROM @TABLE;"));
-            }
-            catch (Exception)
-            {
-                Console.WriteLine("BIGINT -> float fail");
-            }
-            try
-            {
-                Console.WriteLine(await Database.Balances.QuerySingleAsync<double>("SELECT COUNT(*) FROM @TABLE;"));
-            }
-            catch (Exception)
-            {
-                Console.WriteLine("BIGINT -> double fail");
-            }
+            await TestTypeConversion<byte>();
+            await TestTypeConversion<sbyte>();
+            await TestTypeConversion<short>();
+            await TestTypeConversion<ushort>();
+            await TestTypeConversion<int>();
+            await TestTypeConversion<uint>();
+            await TestTypeConversion<long>();
+            await TestTypeConversion<ulong>();
+            await TestTypeConversion<decimal>();
+            await TestTypeConversion<float>();
+            await TestTypeConversion<string>();
             Console.WriteLine("done.");
         }
     }

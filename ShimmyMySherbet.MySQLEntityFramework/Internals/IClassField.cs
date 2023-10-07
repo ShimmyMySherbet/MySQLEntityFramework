@@ -28,5 +28,6 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
 
         bool ShouldOmit(object instance);
 
+        TypeReader Reader { get; }
     }
 }
