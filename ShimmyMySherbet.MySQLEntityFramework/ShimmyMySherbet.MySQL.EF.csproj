@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net48;net5</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net48;net5;net6;net7</TargetFrameworks>
     <Description>A lightweight high-performance .NET MySQL Wrapper and Entity Framework. Designed to make working with a MySQL database as easy as possible</Description>
     <Copyright></Copyright>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
@@ -15,10 +15,10 @@
 +Added support for Composite primary keys (Multiple primary keys)
 
 ~Fixed create table command builder ignoring override SQL type provided by IClassField</PackageReleaseNotes>
-    <Version>1.8.8</Version>
+    <Version>1.8.9</Version>
     <PackageProjectUrl>https://github.com/ShimmyMySherbet/MySQLEntityFramework</PackageProjectUrl>
-    <AssemblyVersion>1.8.8.0</AssemblyVersion>
-    <FileVersion>1.8.8.0</FileVersion>
+    <AssemblyVersion>1.8.9.0</AssemblyVersion>
+    <FileVersion>1.8.9.0</FileVersion>
     <Authors>ShimmyMySherbet</Authors>
     <Company>ShimmyMySherbet</Company>
   </PropertyGroup>
