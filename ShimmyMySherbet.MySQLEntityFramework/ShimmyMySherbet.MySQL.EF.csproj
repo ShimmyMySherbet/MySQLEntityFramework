@@ -8,13 +8,9 @@
     <RepositoryUrl>https://github.com/ShimmyMySherbet/MySQLEntityFramework</RepositoryUrl>
     <PackageTags>MySQL Wrapper EntityFramework</PackageTags>
     <NeutralLanguage>en</NeutralLanguage>
-    <PackageReleaseNotes>+ Added object auto Serializing/Deserializing using attribute [SQLSerialize(ESerializeFormat format)], currently supporting XML and Json.
+    <PackageReleaseNotes>~ Fixed an issue with schema generation errors around SQLDefault
 
-+ Added option to set a class's numeric auto incrememnt primary key when inserting. Setting the primary key value of the class instance to the ID allocated by the database.
-
-+Added support for Composite primary keys (Multiple primary keys)
-
-~Fixed create table command builder ignoring override SQL type provided by IClassField</PackageReleaseNotes>
++ Added .NET 6 and .NET 7 support</PackageReleaseNotes>
     <Version>1.8.9</Version>
     <PackageProjectUrl>https://github.com/ShimmyMySherbet/MySQLEntityFramework</PackageProjectUrl>
     <AssemblyVersion>1.8.9.0</AssemblyVersion>
