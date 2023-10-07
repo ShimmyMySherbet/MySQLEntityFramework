@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
 using MySql.Data.MySqlClient;
 using ShimmyMySherbet.MySQL.EF.Models;
@@ -356,10 +357,12 @@ namespace ShimmyMySherbet.MySQL.EF.Internals
             }
 
             MySqlCommand sqlCommand = (Connection != null ? new MySqlCommand(commandBuilder.ToString(), Connection) : new MySqlCommand(commandBuilder.ToString()));
-            foreach (object def in defaults)
+
+            for(int i = 0; i < defaults.Count; i++)
             {
-                sqlCommand.Parameters.AddWithValue($"@DEF{defaults.IndexOf(def)}", def);
-            }
+				var defaultValue = defaults[i];
+				sqlCommand.Parameters.AddWithValue($"@DEF{i}", defaultValue);
+			}
 
             return sqlCommand;
         }
