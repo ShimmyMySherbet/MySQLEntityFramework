@@ -157,7 +157,7 @@ For a full list of SQL Attribues, see the wiki page https://github.com/ShimmyMyS
 
 Install from Nuget:
 ```
-Install-Package ShimmyMySherbet.MySQL.EF -Version 1.0.0
+Install-Package ShimmyMySherbet.MySQL.EF
 ```
 
 
