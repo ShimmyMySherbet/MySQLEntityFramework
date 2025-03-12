@@ -1,4 +1,4 @@
-﻿using MySql.Data.MySqlClient;
+﻿using MySqlConnector;
 using ShimmyMySherbet.MySQL.EF.Internals;
 using System;
 using System.Reflection;

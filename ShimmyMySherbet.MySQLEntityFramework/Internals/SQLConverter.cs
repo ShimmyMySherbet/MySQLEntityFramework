@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Threading.Tasks;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 using ShimmyMySherbet.MySQL.EF.Models.Exceptions;
 using ShimmyMySherbet.MySQL.EF.Models.Internals;
 using ShimmyMySherbet.MySQL.EF.Models.TypeModel;

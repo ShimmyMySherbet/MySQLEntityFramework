@@ -5,7 +5,7 @@ using System.Data.Common;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 using ShimmyMySherbet.MySQL.EF.Internals;
 using ShimmyMySherbet.MySQL.EF.Models.TypeModel;
 #pragma warning disable CA2100

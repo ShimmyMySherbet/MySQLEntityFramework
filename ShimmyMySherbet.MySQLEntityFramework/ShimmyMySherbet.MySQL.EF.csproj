@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net48;net5;net6;net7</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net48;net5;net6;net7;net8;net9</TargetFrameworks>
     <Description>A lightweight high-performance .NET MySQL Wrapper and Entity Framework. Designed to make working with a MySQL database as easy as possible</Description>
     <Copyright></Copyright>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
@@ -20,8 +20,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MySql.Data" Version="8.0.29" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="MySqlConnector" Version="2.4.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
 </Project>

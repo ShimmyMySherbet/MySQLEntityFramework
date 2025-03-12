@@ -1,6 +1,6 @@
-﻿using MySql.Data.MySqlClient;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using MySqlConnector;
 
 namespace ShimmyMySherbet.MySQL.EF.Models
 {

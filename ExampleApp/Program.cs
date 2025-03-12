@@ -6,7 +6,6 @@ using System.Reflection;
 using System.Threading.Tasks;
 using ExampleApp.Database;
 using ExampleApp.Database.Models;
-using Org.BouncyCastle.Bcpg;
 using ShimmyMySherbet.MySQL.EF.Models;
 using ShimmyMySherbet.MySQL.EF.Models.ConnectionProviders;
 

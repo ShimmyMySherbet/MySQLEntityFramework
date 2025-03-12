@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 using ShimmyMySherbet.MySQL.EF.Models;
 using ShimmyMySherbet.MySQL.EF.Models.Exceptions;
 using ShimmyMySherbet.MySQL.EF.Models.Internals;

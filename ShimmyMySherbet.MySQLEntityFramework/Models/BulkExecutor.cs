@@ -1,4 +1,4 @@
-﻿using MySql.Data.MySqlClient;
+﻿using MySqlConnector;
 using ShimmyMySherbet.MySQL.EF.Internals;
 using System.Text;
 using System.Threading.Tasks;
@@ -91,7 +91,7 @@ namespace ShimmyMySherbet.MySQL.EF.Models
                         using (MySqlCommand command = new MySqlCommand(m_Commands.ToString(), m_Connection))
                         {
                             command.CommandTimeout = 2147483;
-                            command.EnableCaching = false;
+                            //command.EnableCaching = false;
                             foreach (var p in m_MasterPropertiesList)
                             {
                                 command.Parameters.AddWithValue(p.Key, p.Value);
